@@ -1,0 +1,330 @@
+aa: 10
+application:
+  capabilities:
+    v2_0: true
+  policies:
+    admins:
+      rule: MAJORITY Admins
+      type: ImplicitMeta
+    endorsement:
+      rule: MAJORITY Endorsement
+      type: ImplicitMeta
+    lifecycleendorsement:
+      rule: MAJORITY Endorsement
+      type: ImplicitMeta
+    readers:
+      rule: ANY Readers
+      type: ImplicitMeta
+    writers:
+      rule: ANY Writers
+      type: ImplicitMeta
+capabilities:
+  application:
+    v2_0: true
+  channel:
+    v2_0: true
+  orderer:
+    v2_0: true
+channel:
+  capabilities:
+    v2_0: true
+  policies:
+    admins:
+      rule: MAJORITY Admins
+      type: ImplicitMeta
+    readers:
+      rule: ANY Readers
+      type: ImplicitMeta
+    writers:
+      rule: ANY Writers
+      type: ImplicitMeta
+orderer:
+  addresses:
+  - orderer0.example.com:7050
+  - orderer1.example.com:8050
+  - orderer2.example.com:7050
+  batchsize:
+    absolutemaxbytes: 99 MB
+    maxmessagecount: 10
+    preferredmaxbytes: 512 KB
+  batchtimeout: 2s
+  orderertype: etcdraft
+  policies:
+    admins:
+      rule: MAJORITY Admins
+      type: ImplicitMeta
+    blockvalidation:
+      rule: ANY Writers
+      type: ImplicitMeta
+    readers:
+      rule: ANY Readers
+      type: ImplicitMeta
+    writers:
+      rule: ANY Writers
+      type: ImplicitMeta
+organizations:
+- ID: OrdererMSP
+  MSPDir: crypto-config/ordererOrganizations/example.com/msp
+  Name: OrdererOrg
+  Policies:
+    Admins:
+      Rule: OR('OrdererMSP.admin')
+      Type: Signature
+    Readers:
+      Rule: OR('OrdererMSP.member')
+      Type: Signature
+    Writers:
+      Rule: OR('OrdererMSP.member')
+      Type: Signature
+- AnchorPeers:
+  - Host: peer0.org1.example.com
+    Port: 7051
+  ID: Org1MSP
+  MSPDir: crypto-config/peerOrganizations/org1.example.com/msp
+  Name: Org1MSP
+  Policies:
+    Admins:
+      Rule: OR('Org1MSP.admin')
+      Type: Signature
+    Endorsement:
+      Rule: OR('Org1MSP.peer')
+      Type: Signature
+    Readers:
+      Rule: OR('Org1MSP.admin', 'Org1MSP.peer', 'Org1MSP.client')
+      Type: Signature
+    Writers:
+      Rule: OR('Org1MSP.admin', 'Org1MSP.client')
+      Type: Signature
+- AnchorPeers:
+  - Host: peer0.org2.example.com
+    Port: 7051
+  ID: Org2MSP
+  MSPDir: crypto-config/peerOrganizations/org2.example.com/msp
+  Name: Org2MSP
+  Policies:
+    Admins:
+      Rule: OR('Org2MSP.admin')
+      Type: Signature
+    Endorsement:
+      Rule: OR('Org2MSP.peer')
+      Type: Signature
+    Readers:
+      Rule: OR('Org2MSP.admin', 'Org2MSP.peer', 'Org2MSP.client')
+      Type: Signature
+    Writers:
+      Rule: OR('Org2MSP.admin', 'Org2MSP.client')
+      Type: Signature
+profiles:
+  samplemultinodeetcdraft:
+    application:
+      capabilities:
+        v2_0: true
+      organizations:
+      - ID: OrdererMSP
+        MSPDir: crypto-config/ordererOrganizations/example.com/msp
+        Name: OrdererOrg
+        Policies:
+          Admins:
+            Rule: OR('OrdererMSP.admin')
+            Type: Signature
+          Readers:
+            Rule: OR('OrdererMSP.member')
+            Type: Signature
+          Writers:
+            Rule: OR('OrdererMSP.member')
+            Type: Signature
+      policies:
+        admins:
+          rule: MAJORITY Admins
+          type: ImplicitMeta
+        endorsement:
+          rule: MAJORITY Endorsement
+          type: ImplicitMeta
+        lifecycleendorsement:
+          rule: MAJORITY Endorsement
+          type: ImplicitMeta
+        readers:
+          rule: ANY Readers
+          type: ImplicitMeta
+        writers:
+          rule: ANY Writers
+          type: ImplicitMeta
+    capabilities:
+      v2_0: true
+    consortiums:
+      sampleconsortium:
+        organizations:
+        - AnchorPeers:
+          - Host: peer0.org1.example.com
+            Port: 7051
+          ID: Org1MSP
+          MSPDir: crypto-config/peerOrganizations/org1.example.com/msp
+          Name: Org1MSP
+          Policies:
+            Admins:
+              Rule: OR('Org1MSP.admin')
+              Type: Signature
+            Endorsement:
+              Rule: OR('Org1MSP.peer')
+              Type: Signature
+            Readers:
+              Rule: OR('Org1MSP.admin', 'Org1MSP.peer', 'Org1MSP.client')
+              Type: Signature
+            Writers:
+              Rule: OR('Org1MSP.admin', 'Org1MSP.client')
+              Type: Signature
+        - AnchorPeers:
+          - Host: peer0.org2.example.com
+            Port: 7051
+          ID: Org2MSP
+          MSPDir: crypto-config/peerOrganizations/org2.example.com/msp
+          Name: Org2MSP
+          Policies:
+            Admins:
+              Rule: OR('Org2MSP.admin')
+              Type: Signature
+            Endorsement:
+              Rule: OR('Org2MSP.peer')
+              Type: Signature
+            Readers:
+              Rule: OR('Org2MSP.admin', 'Org2MSP.peer', 'Org2MSP.client')
+              Type: Signature
+            Writers:
+              Rule: OR('Org2MSP.admin', 'Org2MSP.client')
+              Type: Signature
+    orderer:
+      addresses:
+      - orderer0.example.com:7050
+      - orderer1.example.com:8050
+      - orderer2.example.com:7050
+      batchsize:
+        absolutemaxbytes: 99 MB
+        maxmessagecount: 10
+        preferredmaxbytes: 512 KB
+      batchtimeout: 2s
+      capabilities:
+        v2_0: true
+      etcdraft:
+        consenters:
+        - ClientTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer0.example.com/tls/server.crt
+          Host: orderer0.example.com
+          Port: 7050
+          ServerTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer0.example.com/tls/server.crt
+        - ClientTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer1.example.com/tls/server.crt
+          Host: orderer1.example.com
+          Port: 8050
+          ServerTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer1.example.com/tls/server.crt
+        - ClientTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/server.crt
+          Host: orderer2.example.com
+          Port: 7050
+          ServerTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/server.crt
+      orderertype: etcdraft
+      organizations:
+      - ID: OrdererMSP
+        MSPDir: crypto-config/ordererOrganizations/example.com/msp
+        Name: OrdererOrg
+        Policies:
+          Admins:
+            Rule: OR('OrdererMSP.admin')
+            Type: Signature
+          Readers:
+            Rule: OR('OrdererMSP.member')
+            Type: Signature
+          Writers:
+            Rule: OR('OrdererMSP.member')
+            Type: Signature
+      policies:
+        admins:
+          rule: MAJORITY Admins
+          type: ImplicitMeta
+        blockvalidation:
+          rule: ANY Writers
+          type: ImplicitMeta
+        readers:
+          rule: ANY Readers
+          type: ImplicitMeta
+        writers:
+          rule: ANY Writers
+          type: ImplicitMeta
+    policies:
+      admins:
+        rule: MAJORITY Admins
+        type: ImplicitMeta
+      readers:
+        rule: ANY Readers
+        type: ImplicitMeta
+      writers:
+        rule: ANY Writers
+        type: ImplicitMeta
+  twoorgschannel:
+    application:
+      capabilities:
+        v2_0: true
+      organizations:
+      - AnchorPeers:
+        - Host: peer0.org1.example.com
+          Port: 7051
+        ID: Org1MSP
+        MSPDir: crypto-config/peerOrganizations/org1.example.com/msp
+        Name: Org1MSP
+        Policies:
+          Admins:
+            Rule: OR('Org1MSP.admin')
+            Type: Signature
+          Endorsement:
+            Rule: OR('Org1MSP.peer')
+            Type: Signature
+          Readers:
+            Rule: OR('Org1MSP.admin', 'Org1MSP.peer', 'Org1MSP.client')
+            Type: Signature
+          Writers:
+            Rule: OR('Org1MSP.admin', 'Org1MSP.client')
+            Type: Signature
+      - AnchorPeers:
+        - Host: peer0.org2.example.com
+          Port: 7051
+        ID: Org2MSP
+        MSPDir: crypto-config/peerOrganizations/org2.example.com/msp
+        Name: Org2MSP
+        Policies:
+          Admins:
+            Rule: OR('Org2MSP.admin')
+            Type: Signature
+          Endorsement:
+            Rule: OR('Org2MSP.peer')
+            Type: Signature
+          Readers:
+            Rule: OR('Org2MSP.admin', 'Org2MSP.peer', 'Org2MSP.client')
+            Type: Signature
+          Writers:
+            Rule: OR('Org2MSP.admin', 'Org2MSP.client')
+            Type: Signature
+      policies:
+        admins:
+          rule: MAJORITY Admins
+          type: ImplicitMeta
+        endorsement:
+          rule: MAJORITY Endorsement
+          type: ImplicitMeta
+        lifecycleendorsement:
+          rule: MAJORITY Endorsement
+          type: ImplicitMeta
+        readers:
+          rule: ANY Readers
+          type: ImplicitMeta
+        writers:
+          rule: ANY Writers
+          type: ImplicitMeta
+    capabilities:
+      v2_0: true
+    consortium: SampleConsortium
+    policies:
+      admins:
+        rule: MAJORITY Admins
+        type: ImplicitMeta
+      readers:
+        rule: ANY Readers
+        type: ImplicitMeta
+      writers:
+        rule: ANY Writers
+        type: ImplicitMeta

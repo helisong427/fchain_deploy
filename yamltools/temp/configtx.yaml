@@ -1,0 +1,277 @@
+aa: 10
+application:
+  capabilities:
+    v2_0: true
+  policies:
+    admins:
+      rule: MAJORITY Admins
+      type: ImplicitMeta
+    endorsement:
+      rule: MAJORITY Endorsement
+      type: ImplicitMeta
+    lifecycleendorsement:
+      rule: MAJORITY Endorsement
+      type: ImplicitMeta
+    readers:
+      rule: ANY Readers
+      type: ImplicitMeta
+    writers:
+      rule: ANY Writers
+      type: ImplicitMeta
+capabilities:
+  application:
+    v2_0: true
+  channel:
+    v2_0: true
+  orderer:
+    v2_0: true
+channel:
+  capabilities:
+    v2_0: true
+  policies:
+    admins:
+      rule: MAJORITY Admins
+      type: ImplicitMeta
+    readers:
+      rule: ANY Readers
+      type: ImplicitMeta
+    writers:
+      rule: ANY Writers
+      type: ImplicitMeta
+orderer:
+  addresses:
+  - orderer.example.com:7050
+  batchsize:
+    absolutemaxbytes: 99 MB
+    maxmessagecount: 10
+    preferredmaxbytes: 512 KB
+  batchtimeout: 2s
+  etcdraft:
+    consenters:
+    - ClientTLSCert: ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+      Host: orderer.example.com
+      Port: 7050
+      ServerTLSCert: ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+  orderertype: etcdraft
+  policies:
+    admins:
+      rule: MAJORITY Admins
+      type: ImplicitMeta
+    blockvalidation:
+      rule: ANY Writers
+      type: ImplicitMeta
+    readers:
+      rule: ANY Readers
+      type: ImplicitMeta
+    writers:
+      rule: ANY Writers
+      type: ImplicitMeta
+organizations:
+- ID: OrdererMSP
+  MSPDir: ../organizations/ordererOrganizations/example.com/msp
+  Name: OrdererOrg
+  OrdererEndpoints:
+  - orderer.example.com:7050
+  Policies:
+    Admins:
+      Rule: OR('OrdererMSP.admin')
+      Type: Signature
+    Readers:
+      Rule: OR('OrdererMSP.member')
+      Type: Signature
+    Writers:
+      Rule: OR('OrdererMSP.member')
+      Type: Signature
+- ID: Org1MSP
+  MSPDir: ../organizations/peerOrganizations/org1.example.com/msp
+  Name: Org1MSP
+  Policies:
+    Admins:
+      Rule: OR('Org1MSP.admin')
+      Type: Signature
+    Endorsement:
+      Rule: OR('Org1MSP.peer')
+      Type: Signature
+    Readers:
+      Rule: OR('Org1MSP.admin', 'Org1MSP.peer', 'Org1MSP.client')
+      Type: Signature
+    Writers:
+      Rule: OR('Org1MSP.admin', 'Org1MSP.client')
+      Type: Signature
+- ID: Org2MSP
+  MSPDir: ../organizations/peerOrganizations/org2.example.com/msp
+  Name: Org2MSP
+  Policies:
+    Admins:
+      Rule: OR('Org2MSP.admin')
+      Type: Signature
+    Endorsement:
+      Rule: OR('Org2MSP.peer')
+      Type: Signature
+    Readers:
+      Rule: OR('Org2MSP.admin', 'Org2MSP.peer', 'Org2MSP.client')
+      Type: Signature
+    Writers:
+      Rule: OR('Org2MSP.admin', 'Org2MSP.client')
+      Type: Signature
+profiles:
+  twoorgschannel:
+    application:
+      capabilities:
+        v2_0: true
+      organizations:
+      - ID: Org1MSP
+        MSPDir: ../organizations/peerOrganizations/org1.example.com/msp
+        Name: Org1MSP
+        Policies:
+          Admins:
+            Rule: OR('Org1MSP.admin')
+            Type: Signature
+          Endorsement:
+            Rule: OR('Org1MSP.peer')
+            Type: Signature
+          Readers:
+            Rule: OR('Org1MSP.admin', 'Org1MSP.peer', 'Org1MSP.client')
+            Type: Signature
+          Writers:
+            Rule: OR('Org1MSP.admin', 'Org1MSP.client')
+            Type: Signature
+      - ID: Org2MSP
+        MSPDir: ../organizations/peerOrganizations/org2.example.com/msp
+        Name: Org2MSP
+        Policies:
+          Admins:
+            Rule: OR('Org2MSP.admin')
+            Type: Signature
+          Endorsement:
+            Rule: OR('Org2MSP.peer')
+            Type: Signature
+          Readers:
+            Rule: OR('Org2MSP.admin', 'Org2MSP.peer', 'Org2MSP.client')
+            Type: Signature
+          Writers:
+            Rule: OR('Org2MSP.admin', 'Org2MSP.client')
+            Type: Signature
+      policies:
+        admins:
+          rule: MAJORITY Admins
+          type: ImplicitMeta
+        endorsement:
+          rule: MAJORITY Endorsement
+          type: ImplicitMeta
+        lifecycleendorsement:
+          rule: MAJORITY Endorsement
+          type: ImplicitMeta
+        readers:
+          rule: ANY Readers
+          type: ImplicitMeta
+        writers:
+          rule: ANY Writers
+          type: ImplicitMeta
+    capabilities:
+      v2_0: true
+    consortium: SampleConsortium
+    policies:
+      admins:
+        rule: MAJORITY Admins
+        type: ImplicitMeta
+      readers:
+        rule: ANY Readers
+        type: ImplicitMeta
+      writers:
+        rule: ANY Writers
+        type: ImplicitMeta
+  twoorgsorderergenesis:
+    capabilities:
+      v2_0: true
+    consortiums:
+      sampleconsortium:
+        organizations:
+        - ID: Org1MSP
+          MSPDir: ../organizations/peerOrganizations/org1.example.com/msp
+          Name: Org1MSP
+          Policies:
+            Admins:
+              Rule: OR('Org1MSP.admin')
+              Type: Signature
+            Endorsement:
+              Rule: OR('Org1MSP.peer')
+              Type: Signature
+            Readers:
+              Rule: OR('Org1MSP.admin', 'Org1MSP.peer', 'Org1MSP.client')
+              Type: Signature
+            Writers:
+              Rule: OR('Org1MSP.admin', 'Org1MSP.client')
+              Type: Signature
+        - ID: Org2MSP
+          MSPDir: ../organizations/peerOrganizations/org2.example.com/msp
+          Name: Org2MSP
+          Policies:
+            Admins:
+              Rule: OR('Org2MSP.admin')
+              Type: Signature
+            Endorsement:
+              Rule: OR('Org2MSP.peer')
+              Type: Signature
+            Readers:
+              Rule: OR('Org2MSP.admin', 'Org2MSP.peer', 'Org2MSP.client')
+              Type: Signature
+            Writers:
+              Rule: OR('Org2MSP.admin', 'Org2MSP.client')
+              Type: Signature
+    orderer:
+      addresses:
+      - orderer.example.com:7050
+      batchsize:
+        absolutemaxbytes: 99 MB
+        maxmessagecount: 10
+        preferredmaxbytes: 512 KB
+      batchtimeout: 2s
+      capabilities:
+        v2_0: true
+      etcdraft:
+        consenters:
+        - ClientTLSCert: ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+          Host: orderer.example.com
+          Port: 7050
+          ServerTLSCert: ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+      orderertype: etcdraft
+      organizations:
+      - ID: OrdererMSP
+        MSPDir: ../organizations/ordererOrganizations/example.com/msp
+        Name: OrdererOrg
+        OrdererEndpoints:
+        - orderer.example.com:7050
+        Policies:
+          Admins:
+            Rule: OR('OrdererMSP.admin')
+            Type: Signature
+          Readers:
+            Rule: OR('OrdererMSP.member')
+            Type: Signature
+          Writers:
+            Rule: OR('OrdererMSP.member')
+            Type: Signature
+      policies:
+        admins:
+          rule: MAJORITY Admins
+          type: ImplicitMeta
+        blockvalidation:
+          rule: ANY Writers
+          type: ImplicitMeta
+        readers:
+          rule: ANY Readers
+          type: ImplicitMeta
+        writers:
+          rule: ANY Writers
+          type: ImplicitMeta
+    policies:
+      admins:
+        rule: MAJORITY Admins
+        type: ImplicitMeta
+      readers:
+        rule: ANY Readers
+        type: ImplicitMeta
+      writers:
+        rule: ANY Writers
+        type: ImplicitMeta
