@@ -43,17 +43,25 @@ func modifyConfig() (err error, str string) {
 	if err != nil || s.IsDir() {
 		return errors.New("config模板文件不存在:" + *template), ""
 	}
+	fileDir, fileName := filepath.Split(*template)
+	absDir, err := filepath.Abs(fileDir)
+	if err != nil{
+		return errors.New("config模板文件不存在:" + *template), ""
+	}
 
-	_, fileName := filepath.Split(*template)
+	fileNameItem := strings.Split(fileName, ".")
 
 	s, err = os.Stat(*outputDir)
 	if err != nil {
 		return errors.New("output目录不存在:" + *outputDir), ""
 	}
 
+
 	v := viper.New()
-	v.SetConfigFile(*template)
-	v.SetConfigType("yaml")
+	v.AddConfigPath(absDir)
+	v.SetConfigName(fileNameItem[0])
+	v.SetConfigType(fileNameItem[1])
+
 
 	items := strings.Split(*changeValue, " ")
 	if len(items) != 3 {
@@ -99,6 +107,7 @@ func modifyConfig() (err error, str string) {
 
 	fileAbs := filepath.Join(*outputDir, fileName)
 
+	//err = v.WriteConfig()
 	err = v.WriteConfigAs(fileAbs)
 	if err != nil {
 		return err, ""

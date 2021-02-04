@@ -9,113 +9,73 @@ C_YELLOW='\033[1;33m'
 # Print the usage message
 function printHelp() {
   USAGE="$1"
-  if [ "$USAGE" == "up" ]; then
+  if [ "$USAGE" == "crypto" ]; then
     println "Usage: "
-    println "  network.sh \033[0;32mup\033[0m [Flags]"
+    println " deploy.sh \033[0;32mcrypto\033[0m [Flags]"
     println
     println "    Flags:"
-    println "    -ca <use CAs> -  Use Certificate Authorities to generate network crypto material"
-    println "    -c <channel name> - Name of channel to create (defaults to \"mychannel\")"
-    println "    -s <dbtype> - Peer state database to deploy: goleveldb (default) or couchdb"
-    println "    -r <max retry> - CLI times out after certain number of attempts (defaults to 5)"
-    println "    -d <delay> - CLI delays for a certain number of seconds (defaults to 3)"
-    println "    -i <imagetag> - Docker image tag of Fabric to deploy (defaults to \"latest\")"
-    println "    -cai <ca_imagetag> - Docker image tag of Fabric CA to deploy (defaults to \"${CA_IMAGETAG}\")"
-    println "    -verbose - Verbose mode"
-    println
-    println "    -h - Print this message"
-    println
-    println " Possible Mode and flag combinations"
-    println "   \033[0;32mup\033[0m -ca -r -d -s -i -cai -verbose"
-    println "   \033[0;32mup createChannel\033[0m -ca -c -r -d -s -i -cai -verbose"
     println
     println " Examples:"
-    println "   network.sh up createChannel -ca -c mychannel -s couchdb -i 2.0.0"
+    println "   deploy.sh crypto"
   elif [ "$USAGE" == "createChannel" ]; then
     println "Usage: "
-    println "  network.sh \033[0;32mcreateChannel\033[0m [Flags]"
+    println "  deploy.sh \033[0;32mcreateChannel\033[0m [Flags]"
     println
     println "    Flags:"
-    println "    -c <channel name> - Name of channel to create (defaults to \"mychannel\")"
-    println "    -r <max retry> - CLI times out after certain number of attempts (defaults to 5)"
-    println "    -d <delay> - CLI delays for a certain number of seconds (defaults to 3)"
-    println "    -verbose - Verbose mode"
+    println "    -CCg <genesis profile> - （必须）通道配置文件configtx.yaml中 Profiles 域中关于创世块的配置域的域名"
+    println "    -CCc <channel profile> - （必须）通道配置文件configtx.yaml中 Profiles 域中关于通道配置域的域名"
+    println "    -CCcn <channel name> - （必须）通道名称"
     println
     println "    -h - Print this message"
     println
     println " Possible Mode and flag combinations"
-    println "   \033[0;32mcreateChannel\033[0m -c -r -d -verbose"
+    println "   \033[0;32mcreateChannel\033[0m -CCg TwoOrgsOrdererGenesis -CCc TwoOrgsChannel -CCcn mychannel"
     println
     println " Examples:"
-    println "   network.sh createChannel -c channelName"
-  elif [ "$USAGE" == "deployCC" ]; then
+    println "   deploy.sh createChannel -CCg TwoOrgsOrdererGenesis -CCc TwoOrgsChannel -CCcn mychannel"
+  elif [ "$USAGE" == "createOrgAnchor" ]; then
     println "Usage: "
-    println "  network.sh \033[0;32mdeployCC\033[0m [Flags]"
+    println "  deploy.sh \033[0;32mcreateOrgAnchor\033[0m [Flags]"
     println
     println "    Flags:"
-    println "    -c <channel name> - Name of channel to deploy chaincode to"
-    println "    -ccn <name> - Chaincode name."
-    println "    -ccl <language> - Programming language of chaincode to deploy: go, java, javascript, typescript"
-    println "    -ccv <version>  - Chaincode version. 1.0 (default), v2, version3.x, etc"
-    println "    -ccs <sequence>  - Chaincode definition sequence. Must be an integer, 1 (default), 2, 3, etc"
-    println "    -ccp <path>  - File path to the chaincode."
-    println "    -ccep <policy>  - (Optional) Chaincode endorsement policy using signature policy syntax. The default policy requires an endorsement from Org1 and Org2"
-    println "    -cccg <collection-config>  - (Optional) File path to private data collections configuration file"
-    println "    -cci <fcn name>  - (Optional) Name of chaincode initialization function. When a function is provided, the execution of init will be requested and the function will be invoked."
+    println "    -COAc <channel profile> - （必须）通道配置文件configtx.yaml中 Profiles 域中关于通道配置域的域名"
+    println "    -COAomn <org msp name> - （必须）组织的msp名称，定义在通道配置文件configtx.yaml中 Organizations.org 里面"
+    println "    -COAcn <channel name> - （必须）通道名称"
     println
     println "    -h - Print this message"
     println
     println " Possible Mode and flag combinations"
-    println "   \033[0;32mdeployCC\033[0m -ccn -ccl -ccv -ccs -ccp -cci -r -d -verbose"
+    println "   \033[0;32createOrgAnchor\033[0m -COAc TwoOrgsChannel -COAomn Org1MSP -COAcn mychannel"
     println
     println " Examples:"
-    println "   network.sh deployCC -ccn basic -ccp ../asset-transfer-basic/chaincode-javascript/ ./ -ccl javascript"
-    println "   network.sh deployCC -ccn mychaincode -ccp ./user/mychaincode -ccv 1 -ccl javascript"
+    println "   deploy.sh createOrgAnchor -COAc TwoOrgsChannel -COAomn Org1MSP -COAcn mychannel"
+  elif [ "$USAGE" == "clean" ]; then
+    println "Usage: "
+    println "  deploy.sh \033[0;32clean\033[0m [Flags]"
+    println
+    println "    Flags:"
+    println
+    println "    -h - Print this message"
+    println
+    println " Possible Mode and flag combinations"
+    println "   \033[0;32createOrgAnchor\033[0m clean"
+    println
+    println " Examples:"
+    println "   deploy.sh createOrgAnchor clean"
   else
     println "Usage: "
-    println "  network.sh <Mode> [Flags]"
+    println "  fchain_deploy.sh <Mode> [Flags]"
     println "    Modes:"
-    println "      \033[0;32mup\033[0m - Bring up Fabric orderer and peer nodes. No channel is created"
-    println "      \033[0;32mup createChannel\033[0m - Bring up fabric network with one channel"
-    println "      \033[0;32mcreateChannel\033[0m - Create and join a channel after the network is created"
-    println "      \033[0;32mdeployCC\033[0m - Deploy a chaincode to a channel (defaults to asset-transfer-basic)"
-    println "      \033[0;32mdown\033[0m - Bring down the network"
-    println
-    println "    Flags:"
-    println "    Used with \033[0;32mnetwork.sh up\033[0m, \033[0;32mnetwork.sh createChannel\033[0m:"
-    println "    -ca <use CAs> -  Use Certificate Authorities to generate network crypto material"
-    println "    -c <channel name> - Name of channel to create (defaults to \"mychannel\")"
-    println "    -s <dbtype> - Peer state database to deploy: goleveldb (default) or couchdb"
-    println "    -r <max retry> - CLI times out after certain number of attempts (defaults to 5)"
-    println "    -d <delay> - CLI delays for a certain number of seconds (defaults to 3)"
-    println "    -i <imagetag> - Docker image tag of Fabric to deploy (defaults to \"latest\")"
-    println "    -cai <ca_imagetag> - Docker image tag of Fabric CA to deploy (defaults to \"${CA_IMAGETAG}\")"
-    println "    -verbose - Verbose mode"
-    println
-    println "    Used with \033[0;32mnetwork.sh deployCC\033[0m"
-    println "    -c <channel name> - Name of channel to deploy chaincode to"
-    println "    -ccn <name> - Chaincode name."
-    println "    -ccl <language> - Programming language of the chaincode to deploy: go, java, javascript, typescript"
-    println "    -ccv <version>  - Chaincode version. 1.0 (default), v2, version3.x, etc"
-    println "    -ccs <sequence>  - Chaincode definition sequence. Must be an integer, 1 (default), 2, 3, etc"
-    println "    -ccp <path>  - File path to the chaincode."
-    println "    -ccep <policy>  - (Optional) Chaincode endorsement policy using signature policy syntax. The default policy requires an endorsement from Org1 and Org2"
-    println "    -cccg <collection-config>  - (Optional) File path to private data collections configuration file"
-    println "    -cci <fcn name>  - (Optional) Name of chaincode initialization function. When a function is provided, the execution of init will be requested and the function will be invoked."
-    println
-    println "    -h - Print this message"
-    println
-    println " Possible Mode and flag combinations"
-    println "   \033[0;32mup\033[0m -ca -r -d -s -i -cai -verbose"
-    println "   \033[0;32mup createChannel\033[0m -ca -c -r -d -s -i -cai -verbose"
-    println "   \033[0;32mcreateChannel\033[0m -c -r -d -verbose"
-    println "   \033[0;32mdeployCC\033[0m -ccn -ccl -ccv -ccs -ccp -cci -r -d -verbose"
+    println "      \033[0;32mcrypto\033[0m - 生成证书文件"
+    println "      \033[0;32mcreateChannel\033[0m - 创建创世区块和通道block文件"
+    println "      \033[0;32mcreateOrgAnchor\033[0m - 生成组织的锚节点block文件"
+    println "      \033[0;32mclean\033[0m - 清理安装环境"
     println
     println " Examples:"
-    println "   network.sh up createChannel -ca -c mychannel -s couchdb -i 2.0.0"
-    println "   network.sh createChannel -c channelName"
-    println "   network.sh deployCC -ccn basic -ccp ../asset-transfer-basic/chaincode-javascript/ -ccl javascript"
-    println "   network.sh deployCC -ccn mychaincode -ccp ./user/mychaincode -ccv 1 -ccl javascript"
+    println "   deploy.sh crypto"
+    println "   deploy.sh createChannel -CCg TwoOrgsOrdererGenesis -CCc TwoOrgsChannel -CCcn mychannel"
+    println "   deploy.sh createOrgAnchor -COAc TwoOrgsChannel -COAomn Org1MSP -COAcn mychannel"
+    println "   deploy.sh clean"
   fi
 }
 
