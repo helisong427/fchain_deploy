@@ -3,8 +3,10 @@
 export PATH=${PWD}/images/bin:$PATH
 export FABRIC_CFG_PATH=${PWD}/config
 
-# ip配置
+CHANNEL_NAME="mychannel"
+FABRIC_VERSION=amd64-2.2.1-bf63e7cb0
 
+# ip配置
 . scripts/utils.sh
 . scripts/check.sh
 . scripts/lib.sh
@@ -55,6 +57,19 @@ while [[ $# -ge 1 ]]; do
     CHANNEL_NAME="$2"
     shift
     ;;
+
+  -SOh)
+    ORDERER_HOSTNAME="$2"
+    shift
+    ;;
+  -SOd)
+    ORDERER_DOMAIN="$2"
+    shift
+    ;;
+  -SOp)
+    ROOT_PASSWORD="$2"
+    shift
+    ;;
   *)
     errorln "Unknown flag: $key"
     printHelp
@@ -64,12 +79,12 @@ while [[ $# -ge 1 ]]; do
   shift
 done
 
-if [ "${MODE}" == "crypto" ]; then
-  createCryptogen
-elif [ "${MODE}" == "createChannel" ]; then
+if [ "${MODE}" == "createChannel" ]; then
   createChannel
 elif [ "${MODE}" == "createOrgAnchor" ]; then
   createOrgAnchor
+elif [ "${MODE}" == "startupOrder" ]; then
+  startupOrder
 elif [ "${MODE}" == "clean" ]; then
   clean
 else

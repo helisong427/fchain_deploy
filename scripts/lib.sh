@@ -36,6 +36,18 @@ function createChannel() {
     rm -Rf "${PWD}/config/system-genesis-block/genesis.block"
   fi
 
+  if [ -d "${PWD}/config/crypto-config" ]; then
+    rm -Rf "${PWD}/config/crypto-config"
+  fi
+
+  # 生成证书配置
+  cryptogen generate --config="${PWD}"/config/crypto-config.yaml --output "${PWD}"/config/crypto-config/
+  if [[ $# -lt 0 ]]; then
+    errorln "生成证书文件失败."
+  fi
+
+  println "生成证书文件完成。"
+
   set -x
   configtxgen -profile "${PROFILE_GENESIS}" -channelID system-channel -outputBlock "${PWD}"/config/system-genesis-block/genesis.block
   res=$?
@@ -82,6 +94,64 @@ function createOrgAnchor() {
   fi
 
   println "创建组织${ORG_MSP_NAME}锚节点成功。"
+}
+
+function startupOrder() {
+  if [ "X${ORDERER_HOSTNAME}" == "X" ]; then
+    fatalln "启动orderer失败：需要-SOh参数带上orderer hostname 在cryptoconfig.yaml中定义"
+  fi
+
+  if [ "X${ORDERER_DOMAIN}" == "X" ]; then
+    fatalln "启动orderer失败：需要-SOd参数带上orderer domain 为orderer所规划的服务的域名"
+  fi
+
+  if [ "X${ROOT_PASSWORD}" == "X" ]; then
+    fatalln "启动orderer失败：需要-SOp参数服务器的root密码"
+  fi
+
+  # 打包orderer配置文件和镜像
+  rm -rf ./temp/"${ORDERER_HOSTNAME}".tar && tar -cf ./temp/"${ORDERER_HOSTNAME}".tar ./config/channel-artifacts/ \
+  ./config/crypto-config/ordererOrganizations/lianxiang.com/orderers/"${ORDERER_HOSTNAME}".lianxiang.com/ \
+  ./images/files/orderer/ ./config/system-genesis-block/genesis.block ./config/docker/docker-compose-"${ORDERER_HOSTNAME}".yaml
+   set -x
+  cd "${PWD}"/temp && rm -rf "${ORDERER_HOSTNAME}".md5 && md5sum "${ORDERER_HOSTNAME}".tar >"${ORDERER_HOSTNAME}".md5 && cd ..
+
+  sshpass -p "${ROOT_PASSWORD}" ssh root@"${ORDERER_DOMAIN}" <<eeooff0
+  if [ ! -d /var/hyperledger ]; then
+    mkdir /var/hyperledger
+  fi
+eeooff0
+
+  sshpass -p "${ROOT_PASSWORD}" scp "${PWD}"/temp/"${ORDERER_HOSTNAME}".md5 root@"${ORDERER_DOMAIN}":/var/hyperledger/"${ORDERER_HOSTNAME}".md5
+set +x
+  sshpass -p "${ROOT_PASSWORD}" ssh root@"${ORDERER_DOMAIN}" >./temp/"${ORDERER_HOSTNAME}"Md5.log <<eeooff0
+  cd /var/hyperledger
+  if [ -f "${ORDERER_HOSTNAME}".tar ]; then
+    md5sum -c "${ORDERER_HOSTNAME}".md5
+  else
+    echo "NOT_EXIST"
+  fi
+eeooff0
+
+  ret=$(awk 'END{print}' ./temp/"${ORDERER_HOSTNAME}"Md5.log | awk -F" " '{print $2}')
+  if [ "X${ret}" != "XOK" ]; then
+    sshpass -p "${ROOT_PASSWORD}" scp "${PWD}"/temp/"${ORDERER_HOSTNAME}".tar root@"${ORDERER_DOMAIN}":/var/hyperledger/"${ORDERER_HOSTNAME}".tar
+  fi
+
+  sshpass -p "${ROOT_PASSWORD}" ssh root@"${ORDERER_DOMAIN}" >./temp/"${ORDERER_HOSTNAME}"DockerLoad.log <<eeooff1
+  cd /var/hyperledger && rm -rf ./config/channel-artifacts ./config/crypto-config/ordererOrganizations/lianxiang.com/orderers/"${ORDERER_HOSTNAME}".lianxiang.com/ ./images/files/orderer/ && tar -xf "${ORDERER_HOSTNAME}".tar
+  docker load < ./images/files/orderer/*.gz
+eeooff1
+
+  ordererImage=$(awk 'END{print}' ./temp/"${ORDERER_HOSTNAME}"DockerLoad.log | awk -F"Loaded image: " '{print $2}')
+  ordererImageName=$(echo "${ordererImage}" | awk -F":" '{print $1}')
+  sshpass -p "${ROOT_PASSWORD}" ssh root@"${ORDERER_DOMAIN}" >./temp/"${ORDERER_HOSTNAME}"DockerTag.log <<eeooff2
+  docker tag "${ordererImage}"  "$ordererImageName":latest
+  docker-compose -f /var/hyperledger/config/docker/docker-compose-"${ORDERER_HOSTNAME}".yaml up -d
+eeooff2
+
+
+
 }
 
 function clean() {

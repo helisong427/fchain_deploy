@@ -1,0 +1,33 @@
+version: '2'
+
+services:
+  orderer2.example.com:
+    container_name: orderer0.example.com
+    image: hyperledger/fabric-orderer
+    environment:
+      - FABRIC_LOGGING_SPEC=INFO
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_BOOTSTRAPMETHOD=file
+      - ORDERER_GENERAL_BOOTSTRAPFILE=/var/hyperledger/orderer0/orderer0.genesis.block
+      - ORDERER_GENERAL_LOCALMSPID=Orderer0MSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer0/msp
+      # enabled TLS
+      - ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer0/tls/server.key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer0/tls/server.crt
+      - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer0/tls/ca.crt]
+      - ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer0/tls/server.crt
+      - ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer0/tls/server.key
+      - ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer0/tls/ca.crt]
+    working_dir: /opt/hyperledger
+    command: orderer
+    volumes:
+      - /var/hyperledger/config/system-genesis-block/genesis.block:/var/hyperledger/orderer0/orderer0.genesis.block
+      - /var/hyperledger/config/crypto-config/ordererOrganizations/lianxiang.com/orderers/orderer0.lianxiang.com/msp:/var/hyperledger/orderer0/msp
+      - /var/hyperledger/config/crypto-config/ordererOrganizations/lianxiang.com/orderers/orderer0.lianxiang.com/tls/:/var/hyperledger/orderer0/tls
+    ports:
+      - 7050:7050
+    extra_hosts:
+      - "orderer0.lianxiang.com:172.26.12.54"
+      - "orderer1.lianxiang.com:172.26.0.79"
+      - "orderer2.lianxiang.com:172.26.31.52"

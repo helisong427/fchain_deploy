@@ -42,9 +42,9 @@ Organizations:
                 Rule: "OR('OrdererMSP.admin')"
 
         OrdererEndpoints:
-            - order0.lianxiang.com:7050
-            - order1.lianxiang.com:8050
-            - order2.lianxiang.com:9050
+            - orderer0.lianxiang.com:7050
+            - orderer1.lianxiang.com:8050
+            - orderer2.lianxiang.com:9050
 
     - &Org1
         # DefaultOrg defines the organization which is used in the sampleconfig
@@ -216,21 +216,21 @@ Orderer: &OrdererDefaults
     # as TLS validation.  The preferred way to specify orderer addresses is now
     # to include the OrdererEndpoints item in your org definition
     Addresses:
-        - order0.lianxiang.com:7050
-        - order1.lianxiang.com:8050
-        - order2.lianxiang.com:9050
+        - orderer0.lianxiang.com:7050
+        - orderer1.lianxiang.com:8050
+        - orderer2.lianxiang.com:9050
 
     EtcdRaft:
         Consenters:
-        - Host: order0.lianxiang.com
+        - Host: orderer0.lianxiang.com
           Port: 7050
           ClientTLSCert: crypto-config/ordererOrganizations/lianxiang.com/orderers/orderer0.lianxiang.com/tls/server.crt
           ServerTLSCert: crypto-config/ordererOrganizations/lianxiang.com/orderers/orderer0.lianxiang.com/tls/server.crt
-        - Host: order1.lianxiang.com
+        - Host: orderer1.lianxiang.com
           Port: 8050
           ClientTLSCert: crypto-config/ordererOrganizations/lianxiang.com/orderers/orderer1.lianxiang.com/tls/server.crt
           ServerTLSCert: crypto-config/ordererOrganizations/lianxiang.com/orderers/orderer1.lianxiang.com/tls/server.crt
-        - Host: order2.lianxiang.com
+        - Host: orderer2.lianxiang.com
           Port: 9050
           ClientTLSCert: crypto-config/ordererOrganizations/lianxiang.com/orderers/orderer2.lianxiang.com/tls/server.crt
           ServerTLSCert: crypto-config/ordererOrganizations/lianxiang.com/orderers/orderer2.lianxiang.com/tls/server.crt
