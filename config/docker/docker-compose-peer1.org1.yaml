@@ -1,0 +1,41 @@
+version: '2'
+
+services:
+
+  peer1.org1.lianxiang.com:
+    container_name: peer1.org1.lianxiang.com
+    image: hyperledger/fabric-peer
+    environment:
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_PEER_ID=peer1.org1.lianxiang.com
+      - CORE_PEER_ADDRESS=peer1.org1.lianxiang.com:8051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:8051
+      - CORE_PEER_CHAINCODEADDRESS=peer1.org1.lianxiang.com:8052
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:8052
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer1.org1.lianxiang.com:8051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer1.org1.lianxiang.com:8051
+      - CORE_PEER_LOCALMSPID=Org1MSP
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_GOSSIP_USELEADERELECTION=true
+      - CORE_PEER_GOSSIP_ORGLEADER=false
+      - CORE_PEER_PROFILE_ENABLED=true
+      - CORE_PEER_TLS_CERT_FILE=/var/hyperledger/peer/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/var/hyperledger/peer/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/var/hyperledger/peer/tls/ca.crt
+      # Allow more time for chaincode container to build on install.
+      - CORE_CHAINCODE_EXECUTETIMEOUT=300s
+    working_dir: /opt/hyperledger/peer
+    command: peer node start
+    volumes:
+      - /var/run/:/host/var/run/
+      - /var/hyperledger/config/crypto-config/peerOrganizations/org1.lianxiang.com/peers/peer1.org1.lianxiang.com/msp:/var/hyperledger/peer/msp
+      - /var/hyperledger/config/crypto-config/peerOrganizations/org1.lianxiang.com/peers/peer1.org1.lianxiang.com/tls:/var/hyperledger/peer/tls
+    ports:
+      - 8051:8051
+      - 8052:8052
+      - 8053:8053
+    extra_hosts:
+      - "orderer0.lianxiang.com:172.26.12.54"
+      - "orderer1.lianxiang.com:172.26.0.79"
+      - "orderer2.lianxiang.com:172.26.31.52"

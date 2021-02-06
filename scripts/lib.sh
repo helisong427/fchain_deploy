@@ -14,7 +14,7 @@ function createCryptogen() {
 }
 
 #生成创世区块文件
-function createChannel() {
+function createConfig() {
 
   if [ "X${PROFILE_GENESIS}" == "X" ]; then
     fatalln "创建通道失败：需要-CCg参数带上通道配置文件configtx.yaml中 Profiles 域中关于创世块的配置域的域名"
@@ -110,10 +110,9 @@ function startupOrder() {
   fi
 
   # 打包orderer配置文件和镜像
-  rm -rf ./temp/"${ORDERER_HOSTNAME}".tar && tar -cf ./temp/"${ORDERER_HOSTNAME}".tar ./config/channel-artifacts/ \
+  rm -rf ./temp/"${ORDERER_HOSTNAME}".tar && tar -cf ./temp/"${ORDERER_HOSTNAME}".tar \
   ./config/crypto-config/ordererOrganizations/lianxiang.com/orderers/"${ORDERER_HOSTNAME}".lianxiang.com/ \
   ./images/files/orderer/ ./config/system-genesis-block/genesis.block ./config/docker/docker-compose-"${ORDERER_HOSTNAME}".yaml
-   set -x
   cd "${PWD}"/temp && rm -rf "${ORDERER_HOSTNAME}".md5 && md5sum "${ORDERER_HOSTNAME}".tar >"${ORDERER_HOSTNAME}".md5 && cd ..
 
   sshpass -p "${ROOT_PASSWORD}" ssh root@"${ORDERER_DOMAIN}" <<eeooff0
@@ -123,36 +122,107 @@ function startupOrder() {
 eeooff0
 
   sshpass -p "${ROOT_PASSWORD}" scp "${PWD}"/temp/"${ORDERER_HOSTNAME}".md5 root@"${ORDERER_DOMAIN}":/var/hyperledger/"${ORDERER_HOSTNAME}".md5
-set +x
-  sshpass -p "${ROOT_PASSWORD}" ssh root@"${ORDERER_DOMAIN}" >./temp/"${ORDERER_HOSTNAME}"Md5.log <<eeooff0
+  sshpass -p "${ROOT_PASSWORD}" ssh root@"${ORDERER_DOMAIN}" >./temp/"${ORDERER_HOSTNAME}"Md5.log <<eeooff1
   cd /var/hyperledger
   if [ -f "${ORDERER_HOSTNAME}".tar ]; then
     md5sum -c "${ORDERER_HOSTNAME}".md5
   else
     echo "NOT_EXIST"
   fi
-eeooff0
+eeooff1
 
   ret=$(awk 'END{print}' ./temp/"${ORDERER_HOSTNAME}"Md5.log | awk -F" " '{print $2}')
   if [ "X${ret}" != "XOK" ]; then
     sshpass -p "${ROOT_PASSWORD}" scp "${PWD}"/temp/"${ORDERER_HOSTNAME}".tar root@"${ORDERER_DOMAIN}":/var/hyperledger/"${ORDERER_HOSTNAME}".tar
   fi
 
-  sshpass -p "${ROOT_PASSWORD}" ssh root@"${ORDERER_DOMAIN}" >./temp/"${ORDERER_HOSTNAME}"DockerLoad.log <<eeooff1
-  cd /var/hyperledger && rm -rf ./config/channel-artifacts ./config/crypto-config/ordererOrganizations/lianxiang.com/orderers/"${ORDERER_HOSTNAME}".lianxiang.com/ ./images/files/orderer/ && tar -xf "${ORDERER_HOSTNAME}".tar
+  sshpass -p "${ROOT_PASSWORD}" ssh root@"${ORDERER_DOMAIN}" >./temp/"${ORDERER_HOSTNAME}"DockerLoad.log <<eeooff2
+  cd /var/hyperledger && rm -rf ./config/crypto-config/ordererOrganizations/lianxiang.com/orderers/"${ORDERER_HOSTNAME}".lianxiang.com/ ./images/files/orderer/ && tar -xf "${ORDERER_HOSTNAME}".tar
   docker load < ./images/files/orderer/*.gz
+eeooff2
+
+  peerImage=$(awk 'END{print}' ./temp/"${ORDERER_HOSTNAME}"DockerLoad.log | awk -F"Loaded image: " '{print $2}')
+  peerImageName=$(echo "${peerImage}" | awk -F":" '{print $1}')
+  sshpass -p "${ROOT_PASSWORD}" ssh root@"${ORDERER_DOMAIN}" >./temp/"${ORDERER_HOSTNAME}"DockerTag.log <<eeooff3
+  docker tag "${peerImage}"  "$peerImageName":latest
+  docker rm "${ORDERER_DOMAIN}" -f
+  docker-compose -f /var/hyperledger/config/docker/docker-compose-"${ORDERER_HOSTNAME}".yaml up -d
+eeooff3
+
+
+  println "启动${ORDERER_HOSTNAME}完成。"
+}
+
+function startupPeer() {
+
+  if [ "X${PEER_HOSTNAME}" == "X" ]; then
+    fatalln "启动peer失败：需要-SPpn参数带上peer name，默认是peer0、peer1 这种格式"
+  fi
+
+  if [ "X${ORG_HOSTNAME}" == "X" ]; then
+    fatalln "启动peer失败：需要-SPon参数带上org name 在crypto-config.yaml中定义（注意需要小写）"
+  fi
+
+  if [ "X${PEER_DOMAIN}" == "X" ]; then
+    fatalln "启动peer失败：需要-SPd参数带上peer domain 为peer所规划的服务的域名"
+  fi
+
+  if [ "X${ROOT_PASSWORD}" == "X" ]; then
+    fatalln "启动peer失败：需要-SPp参数服务器的root密码"
+  fi
+
+  peerOrgName="${PEER_HOSTNAME}"."${ORG_HOSTNAME}"
+
+#  ssh root@"${PEER_DOMAIN}" <<eeooff
+#eeooff
+
+  # 打包orderer配置文件和镜像
+  rm -rf ./temp/"${PEER_HOSTNAME}".tar && tar -cf ./temp/"${peerOrgName}".tar  \
+  ./config/crypto-config/peerOrganizations/"${ORG_HOSTNAME}".lianxiang.com/peers/"${peerOrgName}".lianxiang.com \
+  ./images/files/peer/ ./config/docker/docker-compose-"${peerOrgName}".yaml
+  cd "${PWD}"/temp && rm -rf "${peerOrgName}".md5 && md5sum "${peerOrgName}".tar >"${peerOrgName}".md5 && cd ..
+
+  sshpass -p "${ROOT_PASSWORD}" ssh root@"${PEER_DOMAIN}" <<eeooff0
+  if [ ! -d /var/hyperledger ]; then
+    mkdir /var/hyperledger
+  fi
+eeooff0
+
+  sshpass -p "${ROOT_PASSWORD}" scp "${PWD}"/temp/"${peerOrgName}".md5 root@"${PEER_DOMAIN}":/var/hyperledger/"${peerOrgName}".md5
+  sshpass -p "${ROOT_PASSWORD}" ssh root@"${PEER_DOMAIN}" >./temp/"${peerOrgName}"Md5.log <<eeooff1
+  cd /var/hyperledger
+  if [ -f "${peerOrgName}".tar ]; then
+    md5sum -c "${peerOrgName}".md5
+  else
+    echo "NOT_EXIST"
+  fi
 eeooff1
 
-  ordererImage=$(awk 'END{print}' ./temp/"${ORDERER_HOSTNAME}"DockerLoad.log | awk -F"Loaded image: " '{print $2}')
-  ordererImageName=$(echo "${ordererImage}" | awk -F":" '{print $1}')
-  sshpass -p "${ROOT_PASSWORD}" ssh root@"${ORDERER_DOMAIN}" >./temp/"${ORDERER_HOSTNAME}"DockerTag.log <<eeooff2
-  docker tag "${ordererImage}"  "$ordererImageName":latest
-  docker-compose -f /var/hyperledger/config/docker/docker-compose-"${ORDERER_HOSTNAME}".yaml up -d
+  ret=$(awk 'END{print}' ./temp/"${peerOrgName}"Md5.log | awk -F" " '{print $2}')
+  if [ "X${ret}" != "XOK" ]; then
+    sshpass -p "${ROOT_PASSWORD}" scp "${PWD}"/temp/"${peerOrgName}".tar root@"${PEER_DOMAIN}":/var/hyperledger/"${peerOrgName}".tar
+  fi
+
+  sshpass -p "${ROOT_PASSWORD}" ssh root@"${PEER_DOMAIN}" >./temp/"${peerOrgName}"DockerLoad.log <<eeooff2
+  cd /var/hyperledger && rm -rf ./config/crypto-config/peerOrganizations/"${ORG_HOSTNAME}".lianxiang.com/peers/"${peerOrgName}".lianxiang.com/ ./images/files/peer/ && tar -xf "${peerOrgName}".tar
+  docker load < ./images/files/peer/*.gz
+
 eeooff2
 
 
+  peerImage=$(awk 'END{print}' ./temp/"${peerOrgName}"DockerLoad.log | awk -F"Loaded image: " '{print $2}')
+  peerImageName=$(echo "${peerImage}" | awk -F":" '{print $1}')
+  sshpass -p "${ROOT_PASSWORD}" ssh root@"${PEER_DOMAIN}" >./temp/"${peerOrgName}"DockerTag.log <<eeooff3
+  docker tag "${peerImage}"  "$peerImageName":latest
+  docker rm "${PEER_DOMAIN}" -f
+  docker-compose -f /var/hyperledger/config/docker/docker-compose-"${peerOrgName}".yaml up -d
+eeooff3
 
+    println "启动${peerOrgName}成功。"
 }
+
+
+
 
 function clean() {
   if [ -d "${PWD}/config/channel-artifacts" ]; then
@@ -166,5 +236,16 @@ function clean() {
   if [ -d "${PWD}/config/crypto-config" ]; then
     rm -Rf "${PWD}/config/crypto-config"
   fi
+
+  # 远程清理orderer
+
+
+
   println "清理完成。"
+}
+
+
+
+function createChannel() {
+
 }

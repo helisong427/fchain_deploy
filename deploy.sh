@@ -70,6 +70,24 @@ while [[ $# -ge 1 ]]; do
     ROOT_PASSWORD="$2"
     shift
     ;;
+
+  -SPpn)
+    PEER_HOSTNAME="$2"
+    shift
+    ;;
+  -SPon)
+    ORG_HOSTNAME="$2"
+    shift
+    ;;
+  -SPd)
+    PEER_DOMAIN="$2"
+    shift
+    ;;
+  -SPp)
+    ROOT_PASSWORD="$2"
+    shift
+    ;;
+
   *)
     errorln "Unknown flag: $key"
     printHelp
@@ -79,12 +97,16 @@ while [[ $# -ge 1 ]]; do
   shift
 done
 
-if [ "${MODE}" == "createChannel" ]; then
-  createChannel
+if [ "${MODE}" == "createConfig" ]; then
+  createConfig
 elif [ "${MODE}" == "createOrgAnchor" ]; then
   createOrgAnchor
 elif [ "${MODE}" == "startupOrder" ]; then
   startupOrder
+elif [ "${MODE}" == "startupPeer" ]; then
+  startupPeer
+elif [ "${MODE}" == "createChannel" ]; then
+  createChannel
 elif [ "${MODE}" == "clean" ]; then
   clean
 else
