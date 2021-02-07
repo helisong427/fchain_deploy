@@ -3,10 +3,12 @@
 export PATH=${PWD}/images/bin:$PATH
 export FABRIC_CFG_PATH=${PWD}/config
 
+DEPLOY_PATH="${PWD}"
+
 # ip配置
-. scripts/networkUp.sh
-. scripts/utils.sh
-. scripts/check.sh
+
+
+
 #set -euo pipefail
 
 CHANNEL_NAME="mychannel"
@@ -16,33 +18,93 @@ IMAGE_TAG="amd64-2.2.1-bf63e7cb0"
 base_domain="lianxiang.com"
 
 ########### orderer 多节点配置
+#orderer_number="3"
+#orderer_1_name="orderer0"
+#orderer_1_rootpw="lighting8000"
+#orderer_1_port="7050"
+#
+#orderer_2_name="orderer1"
+#orderer_2_rootpw="lighting"
+#orderer_2_port="8050"
+#
+#orderer_3_name="orderer2"
+#orderer_3_rootpw="heyufeng"
+#orderer_3_port="9050"
+#
+############ org和peer 多节点配置
+#org_number="2"
+#org_1_name="org1"
+#org_1_msp_name="Org1MSP"
+#org_1_anchor="1"
+#org_1_peer_number="2"
+#org_1_peer_1_name="peer0"
+#org_1_peer_1_rootpw="lighting8000"
+#org_1_peer_1_port="7051"
+#org_1_peer_2_name="peer1"
+#org_1_peer_2_rootpw="lighting"
+#org_1_peer_2_port="8051"
+#
+#org_2_name="org2"
+#org_2_msp_name="Org2MSP"
+#org_2_anchor="1"
+#org_2_peer_number="2"
+#org_2_peer_1_name="peer0"
+#org_2_peer_1_rootpw="heyufeng"
+#org_2_peer_1_port="9051"
+#org_2_peer_2_name="peer1"
+#org_2_peer_2_rootpw="heyufeng"
+#org_2_peer_2_port="10051"
+
+
 orderer_number="3"
-orderer_1_domain="orderer0"
-orderer_1_rootpw="lighting8000"
+orderer_1_name="orderer0"
+orderer_1_rootpw="heyufeng"
+orderer_1_port="7050"
 
-orderer_2_domain="orderer1"
-orderer_2_rootpw="lighting"
+orderer_2_name="orderer1"
+orderer_2_rootpw="heyufeng"
+orderer_2_port="8050"
 
-orderer_3_domain="orderer2"
+orderer_3_name="orderer2"
 orderer_3_rootpw="heyufeng"
+orderer_3_port="9050"
 
 ########### org和peer 多节点配置
 org_number="2"
 org_1_name="org1"
-org_1_anchor="peer0.org1.lianxiang.com"
+org_1_msp_name="Org1MSP"
+org_1_anchor="1"
 org_1_peer_number="2"
-org_1_peer_1_domain="peer0"
-org_1_peer_1_rootpw="lighting8000"
-org_1_peer_2_domain="peer1"
-org_1_peer_2_rootpw="lighting"
+org_1_peer_1_name="peer0"
+org_1_peer_1_rootpw="heyufeng"
+org_1_peer_1_port="7051"
+org_1_peer_2_name="peer1"
+org_1_peer_2_rootpw="heyufeng"
+org_1_peer_2_port="8051"
 
 org_2_name="org2"
-org_2_anchor="peer0.org2.lianxiang.com"
+org_2_msp_name="Org2MSP"
+org_2_anchor="1"
 org_2_peer_number="2"
-org_2_peer_1_domain="peer0"
+org_2_peer_1_name="peer0"
 org_2_peer_1_rootpw="heyufeng"
-org_2_peer_2_domain="peer1"
+org_2_peer_1_port="9051"
+org_2_peer_2_name="peer1"
 org_2_peer_2_rootpw="heyufeng"
+org_2_peer_2_port="10051"
+
+
+. scripts/utils.sh
+. scripts/envVar.sh
+
+. scripts/check.sh
+
+. scripts/configUpdate.sh
+
+. scripts/networkUp.sh
+. scripts/createChannel.sh
+
+
 
 function parseConfig() {
   if [ "X$CHANNEL_NAME" == "X" ]; then
@@ -68,17 +130,24 @@ function parseConfig() {
   fi
   infoln "orderer_number=$orderer_number"
   for ((i = 1; i <= orderer_number; i++)); do
-    orderer_domain=$(eval echo '$'orderer_"${i}"_domain)
-    if [ "X${orderer_domain}" == "X" ]; then
-      fatalln "config orderer_${i}_domain 不能为空。"
+    orderer_name=$(eval echo '$'"orderer_${i}_name")
+    if [ "X${orderer_name}" == "X" ]; then
+      fatalln "config orderer_${i}_name 不能为空。"
     fi
-    infoln "orderer_${i}_domain=${orderer_domain}.${base_domain}"
+    infoln "orderer_${i}_name=${orderer_name}.${base_domain}"
 
-    orderer_rootpw=$(eval echo -e '$'orderer_"${i}"_rootpw)
+    orderer_rootpw=$(eval echo -e '$'"orderer_${i}_rootpw")
     if [ "X${orderer_rootpw}" == "X" ]; then
       fatalln "config orderer_${i}_rootpw 不能为空。"
     fi
     infoln "orderer_${i}_rootpw=${orderer_rootpw}"
+
+    orderer_port=$(eval echo -e '$'"orderer_${i}_port")
+    if [ "X${orderer_port}" == "X" ]; then
+      fatalln "config orderer_${i}_port 不能为空。"
+    fi
+    infoln "orderer_${i}_port=${orderer_port}"
+
   done
 
   if [ $org_number -lt 1 ]; then
@@ -88,19 +157,25 @@ function parseConfig() {
 
   for ((i = 1; i <= org_number; i++)); do
 
-    org_name=$(eval echo '$'org_"${i}_name")
+    org_name=$(eval echo '$'"org_${i}_name")
     if [ "X${org_name}" == "X" ]; then
       fatalln "config org_${i}_name 不能为空。"
     fi
     infoln "org_${i}_name=${org_name}"
 
-    org_anchor=$(eval echo '$'org_"${i}_anchor")
+    org_msp_name=$(eval echo '$'"org_${i}_msp_name")
+    if [ "X${org_msp_name}" == "X" ]; then
+      fatalln "config org_${i}_msp_name 不能为空。"
+    fi
+    infoln "org_${i}_msp_name=${org_msp_name}"
+
+    org_anchor=$(eval echo '$'"org_${i}_anchor")
     if [ "X${org_anchor}" == "X" ]; then
       fatalln "config org_${i}_anchor 不能为空。"
     fi
     infoln "org_${i}_anchor=${org_anchor}"
 
-    org_peer_number=$(eval echo '$'org_"${i}_peer_number")
+    org_peer_number=$(eval echo '$'"org_${i}_peer_number")
     if [ "X${org_peer_number}" == "X" ]; then
       fatalln "config org_${i}_peer_number 不能为空。"
     fi
@@ -108,17 +183,23 @@ function parseConfig() {
 
     for ((ii = 1; ii <= org_peer_number; ii++)); do
 
-      org_peer_domain=$(eval echo '$'org_"${i}"_peer_"${ii}"_domain)
-      if [ "X${org_peer_domain}" == "X" ]; then
-        fatalln "config org_${i}_peer_${ii}_domain 不能为空。"
+      org_peer_name=$(eval echo '$'"org_${i}_peer_${ii}_name")
+      if [ "X${org_peer_name}" == "X" ]; then
+        fatalln "config org_${i}_peer_${ii}_name 不能为空。"
       fi
-      infoln "org_${i}_peer_${ii}_domain=${org_peer_domain}.${org_name}.${base_domain}"
+      infoln "org_${i}_peer_${ii}_name=${org_peer_name}.${org_name}.${base_domain}"
 
-      org_peer_rootpw=$(eval echo '$'org_"${i}"_peer_"${ii}"_rootpw)
+      org_peer_rootpw=$(eval echo '$'"org_${i}_peer_${ii}_rootpw")
       if [ "X${org_peer_rootpw}" == "X" ]; then
         fatalln "config org_${i}_peer_${ii}_rootpw 不能为空。"
       fi
       infoln "org_${i}_peer_${ii}_rootpw=${org_peer_rootpw}"
+
+      org_peer_port=$(eval echo '$'"org_${i}_peer_${ii}_port")
+      if [ "X${org_peer_port}" == "X" ]; then
+        fatalln "config org_${i}_peer_${ii}_port 不能为空。"
+      fi
+      infoln "org_${i}_peer_${ii}_port=${org_peer_port}"
     done
 
   done
@@ -176,7 +257,7 @@ while [[ $# -ge 1 ]]; do
     shift
     ;;
   -SOd)
-    ORDERER_DOMAIN="$2"
+    ORDERER_name="$2"
     shift
     ;;
   -SOp)
@@ -193,7 +274,7 @@ while [[ $# -ge 1 ]]; do
     shift
     ;;
   -SPd)
-    PEER_DOMAIN="$2"
+    PEER_name="$2"
     shift
     ;;
   -SPp)
@@ -215,17 +296,17 @@ function networkUp() {
   createConsortium
 
   for ((i = 1; i <= orderer_number; i++)); do
-    orderer_domain=$(eval echo '$'orderer_"${i}"_domain)
-    if [ "X${orderer_domain}" == "X" ]; then
-      fatalln "config orderer_${i}_domain 不能为空。"
+    orderer_name=$(eval echo '$'"orderer_${i}_name")
+    if [ "X${orderer_name}" == "X" ]; then
+      fatalln "config orderer_${i}_name 不能为空。"
     fi
 
-    orderer_rootpw=$(eval echo -e '$'orderer_"${i}"_rootpw)
+    orderer_rootpw=$(eval echo -e '$'"orderer_${i}_rootpw")
     if [ "X${orderer_rootpw}" == "X" ]; then
       fatalln "config orderer_${i}_rootpw 不能为空。"
     fi
 
-    startupOrder "${orderer_domain}" "${orderer_domain}.${base_domain}" "${orderer_rootpw}"
+    startupOrderer "${orderer_name}" "${orderer_name}.${base_domain}" "${orderer_rootpw}"
 
   done
 
@@ -233,34 +314,33 @@ function networkUp() {
 
   for ((i = 1; i <= org_number; i++)); do
 
-    org_name=$(eval echo '$'org_"${i}_name")
+    org_name=$(eval echo '$'"org_${i}_name")
     if [ "X${org_name}" == "X" ]; then
       fatalln "config org_${i}_name 不能为空。"
     fi
 
-    org_anchor=$(eval echo '$'org_"${i}_anchor")
+    org_anchor=$(eval echo '$'"org_${i}_anchor")
     if [ "X${org_anchor}" == "X" ]; then
       fatalln "config org_${i}_anchor 不能为空。"
     fi
 
-    org_peer_number=$(eval echo '$'org_"${i}_peer_number")
+    org_peer_number=$(eval echo '$'"org_${i}_peer_number")
     if [ "X${org_peer_number}" == "X" ]; then
       fatalln "config org_${i}_peer_number 不能为空。"
     fi
 
     for ((ii = 1; ii <= org_peer_number; ii++)); do
-
-      org_peer_domain=$(eval echo '$'org_"${i}"_peer_"${ii}"_domain)
-      if [ "X${org_peer_domain}" == "X" ]; then
-        fatalln "config org_${i}_peer_${ii}_domain 不能为空。"
+      org_peer_name=$(eval echo '$'"org_${i}_peer_${ii}_name")
+      if [ "X${org_peer_name}" == "X" ]; then
+        fatalln "config org_${i}_peer_${ii}_name 不能为空。"
       fi
 
-      org_peer_rootpw=$(eval echo '$'org_"${i}"_peer_"${ii}"_rootpw)
+      org_peer_rootpw=$(eval echo '$'"org_${i}_peer_${ii}_rootpw")
       if [ "X${org_peer_rootpw}" == "X" ]; then
         fatalln "config org_${i}_peer_${ii}_rootpw 不能为空。"
       fi
 
-      startupPeer "${org_peer_domain}" "${org_name}" "${org_peer_domain}.${org_name}.${base_domain}" "${org_peer_rootpw}"
+      startupPeer "${org_peer_name}" "${org_name}" "${org_peer_name}.${org_name}.${base_domain}" "${org_peer_rootpw}"
 
     done
 
@@ -269,17 +349,30 @@ function networkUp() {
 
 }
 
+function createChannel() {
+
+  channelCreate
+  successln "Channel '${CHANNEL_NAME}' created"
+
+  for ((i = 1; i <= org_number; i++)); do
+    for ((ii = 1; ii <= org_peer_number; ii++)); do
+      joinChannel "${i}" "${ii}"
+      successln "peer${ii}.org${i}加入通道成功。"
+    done
+  done
+
+  for ((i = 1; i <= org_number; i++)); do
+    setAnchorPeer "${i}"
+  done
+
+  infoln "======>   createChannel完成。"
+}
+
 # 检查参数配置
 parseConfig
 
 if [ "${MODE}" == "up" ]; then
   networkUp
-elif [ "${MODE}" == "createOrgAnchor" ]; then
-  createOrgAnchor
-elif [ "${MODE}" == "startupOrder" ]; then
-  startupOrder
-elif [ "${MODE}" == "startupPeer" ]; then
-  startupPeer
 elif [ "${MODE}" == "createChannel" ]; then
   createChannel
 elif [ "${MODE}" == "clean" ]; then

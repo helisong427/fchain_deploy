@@ -41,10 +41,10 @@ Organizations:
                 Type: Signature
                 Rule: "OR('OrdererMSP.admin')"
 
-        OrdererEndpoints:
-            - orderer0.lianxiang.com:7050
-            - orderer1.lianxiang.com:8050
-            - orderer2.lianxiang.com:9050
+#        OrdererEndpoints:
+#            - orderer0.lianxiang.com:7050
+#            - orderer1.lianxiang.com:8050
+#            - orderer2.lianxiang.com:9050
 
     - &Org1
         # DefaultOrg defines the organization which is used in the sampleconfig

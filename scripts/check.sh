@@ -3,7 +3,7 @@
 function buildYamlTools() {
   rm -rf "$PWD/tools/*"
   set -x
-  cd "$PWD/yamltools" && go build -o "$PWD/tools/yamlTools"
+  cd "$DEPLOY_PATH/yamltools" && go build -o "$DEPLOY_PATH/tools/yamlTools"
   ret=$#
   set +x
   if [[ ret -lt 0 ]]; then

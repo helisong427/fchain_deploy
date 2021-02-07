@@ -11,6 +11,7 @@ services:
     environment:
       - FABRIC_LOGGING_SPEC=INFO
       - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_LISTENPORT=8050
       - ORDERER_GENERAL_BOOTSTRAPMETHOD=file
       - ORDERER_GENERAL_BOOTSTRAPFILE=/var/hyperledger/orderer/orderer.genesis.block
       - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
@@ -33,6 +34,9 @@ services:
     ports:
       - 8050:8050
     extra_hosts:
-      - "orderer0.lianxiang.com:172.26.12.54"
-      - "orderer1.lianxiang.com:172.26.0.79"
+#      - "orderer0.lianxiang.com:172.26.12.54"
+#      - "orderer1.lianxiang.com:172.26.0.79"
+#      - "orderer2.lianxiang.com:172.26.31.52"
+      - "orderer0.lianxiang.com:172.26.31.52"
+      - "orderer1.lianxiang.com:172.26.31.52"
       - "orderer2.lianxiang.com:172.26.31.52"
