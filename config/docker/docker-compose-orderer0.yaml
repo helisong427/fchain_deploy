@@ -1,9 +1,12 @@
 version: '2'
 
+volumes:
+  orderer0.lianxiang.com:
+
 services:
   orderer0.lianxiang.com:
     container_name: orderer0.lianxiang.com
-    image: hyperledger/fabric-orderer
+    image: hyperledger/fabric-orderer:$IMAGE_TAG
     environment:
       - FABRIC_LOGGING_SPEC=INFO
       - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
@@ -25,6 +28,7 @@ services:
       - /var/hyperledger/config/system-genesis-block/genesis.block:/var/hyperledger/orderer/orderer.genesis.block
       - /var/hyperledger/config/crypto-config/ordererOrganizations/lianxiang.com/orderers/orderer0.lianxiang.com/msp:/var/hyperledger/orderer/msp
       - /var/hyperledger/config/crypto-config/ordererOrganizations/lianxiang.com/orderers/orderer0.lianxiang.com/tls/:/var/hyperledger/orderer/tls
+      - orderer0.lianxiang.com:/var/hyperledger/production/orderer
     ports:
       - 7050:7050
     extra_hosts:

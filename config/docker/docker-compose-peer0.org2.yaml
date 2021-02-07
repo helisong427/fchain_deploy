@@ -1,10 +1,13 @@
 version: '2'
 
+volumes:
+  peer0.org2.lianxiang.com:
+
 services:
 
   peer0.org2.lianxiang.com:
     container_name: peer0.org2.lianxiang.com
-    image: hyperledger/fabric-peer
+    image: hyperledger/fabric-peer:$IMAGE_TAG
     environment:
       - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
       - CORE_PEER_ID=peer0.org2.lianxiang.com
@@ -31,6 +34,7 @@ services:
       - /var/run/:/host/var/run/
       - /var/hyperledger/config/crypto-config/peerOrganizations/org2.lianxiang.com/peers/peer0.org2.lianxiang.com/msp:/etc/hyperledger/peer/msp
       - /var/hyperledger/config/crypto-config/peerOrganizations/org2.lianxiang.com/peers/peer0.org2.lianxiang.com/tls:/etc/hyperledger/peer/tls
+      - peer0.org2.lianxiang.com:/var/hyperledger/production
     ports:
       - 9051:9051
       - 9052:9052
