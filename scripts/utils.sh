@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 C_RESET='\033[0m'
 C_RED='\033[0;31m'
 C_GREEN='\033[0;32m'
@@ -71,6 +72,8 @@ function printHelp() {
   fi
 }
 
+
+
 # println echos string
 function println() {
   echo -e "$1"
@@ -101,6 +104,7 @@ function fatalln() {
   errorln "$1"
   exit 1
 }
+
 
 export -f errorln
 export -f successln

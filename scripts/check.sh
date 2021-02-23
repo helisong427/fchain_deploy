@@ -17,5 +17,8 @@ function buildYamlTools() {
 # 安装环境配置检查
 function check_env() {
 
+  # 检查端口是否被占用
+
+  #
   println "check env success."
 }

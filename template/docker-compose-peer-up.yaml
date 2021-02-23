@@ -24,24 +24,22 @@ services:
       - CORE_PEER_GOSSIP_USELEADERELECTION=true
       - CORE_PEER_GOSSIP_ORGLEADER=false
       - CORE_PEER_PROFILE_ENABLED=true
-      - CORE_PEER_TLS_CERT_FILE=/var/hyperledger/peer/tls/server.crt
-      - CORE_PEER_TLS_KEY_FILE=/var/hyperledger/peer/tls/server.key
-      - CORE_PEER_TLS_ROOTCERT_FILE=/var/hyperledger/peer/tls/ca.crt
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
       # Allow more time for chaincode container to build on install.
       - CORE_CHAINCODE_EXECUTETIMEOUT=300s
-    working_dir: /opt/hyperledger/peer
+    working_dir: /opt/hyperledger/fabric/peer
     command: peer node start
     volumes:
       - /var/run/:/host/var/run/
-      - /var/hyperledger/config/crypto-config/peerOrganizations/org1.lianxiang.com/peers/peer0.org1.lianxiang.com/msp:/var/hyperledger/peer/msp
-      - /var/hyperledger/config/crypto-config/peerOrganizations/org1.lianxiang.com/peers/peer0.org1.lianxiang.com/tls:/var/hyperledger/peer/tls
+      - /var/hyperledger/config/crypto-config/peerOrganizations/org1.lianxiang.com/peers/peer0.org1.lianxiang.com/msp:/etc/hyperledger/fabric/msp
+      - /var/hyperledger/config/crypto-config/peerOrganizations/org1.lianxiang.com/peers/peer0.org1.lianxiang.com/tls:/etc/hyperledger/fabric/tls
       - peer0.org1.lianxiang.com:/var/hyperledger/production
     ports:
       - 7051:7051
       - 7052:7052
       - 7053:7053
-    networks:
-      - lianxiang
     extra_hosts:
       - "orderer0.lianxiang.com:172.26.12.54"
       - "orderer1.lianxiang.com:172.26.0.79"
