@@ -2,7 +2,8 @@ version: '2'
 
 volumes:
   orderer1.lianxiang.com:
-
+networks:
+  fchain:
 
 services:
   orderer1.lianxiang.com:
@@ -33,6 +34,8 @@ services:
       - orderer1.lianxiang.com:/var/hyperledger/production/orderer
     ports:
       - 8050:8050
+    networks:
+      - fchain
     extra_hosts:
       - "orderer0.lianxiang.com:172.26.12.54"
       - "orderer1.lianxiang.com:172.26.0.79"

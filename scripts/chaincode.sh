@@ -1,5 +1,52 @@
 #!/bin/bash
 
+
+function pushCcenvImagesFile() {
+  local org_index="$1"
+  local peer_index="$2"
+  local org_name org_domain peer_name peer_rootpw peer_domain
+  local temp_dir="${DEPLOY_PATH}/temp/ccenv"
+
+  org_name=$(get_ORG_NAME "${org_index}")
+  org_domain="${org_name}.${BASE_DOMAIN}"
+  peer_name=$(get_ORG_PEER_NAME "${org_index}" "${peer_index}")
+  peer_rootpw=$(get_ORG_PEER_ROOTPW "${org_index}" "${peer_index}")
+  peer_domain="${peer_name}.${org_domain}"
+
+  mkdir -p "${temp_dir}"
+
+  if [ ! -f "${temp_dir}/ccenv.tar" ]; then
+    tar -cf "${temp_dir}/ccenv.tar" ./images/files/ccenv/ ./images/files/baseos/
+  fi
+
+  sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >"${temp_dir}"/ccenv_md5.log <<eeooff1
+  cd /var/hyperledger
+  if [ -f ccenv.tar ]; then
+    echo "ccenv.tar EXIST"
+  fi
+  exit
+eeooff1
+
+  local ret
+  ret=$(grep -n '^ccenv.tar' "${temp_dir}"/ccenv_md5.log | awk -F" " '{print $2}' | tr -d '\n\r')
+  echo "${ret}"
+  if [ "X${ret}" != "XEXIST" ]; then
+    sshpass -p "${peer_rootpw}" scp "${temp_dir}"/ccenv.tar root@"${peer_domain}":/var/hyperledger/ccenv.tar
+  else
+    infoln "ccenv.tar 文件存在，不需要上传。"
+  fi
+
+  sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >"${temp_dir}"/ccenv_dockerLoad.log <<eeooff2
+  cd /var/hyperledger
+  if [ ! -f ./images/files/ccenv/*.tar ]; then
+     tar -xf ccenv.tar
+  fi
+  docker load < ./images/files/ccenv/*.tar
+  docker load < ./images/files/baseos/*.tar
+  exit
+eeooff2
+}
+
 # 打包链码
 function packageChaincode() {
 
@@ -197,18 +244,25 @@ chaincodeInvokeInit() {
 
   parsePeerConnectionParameters "$@"
 
+  local orderer_name orderer_port orderer_ca
+  orderer_name=$(get_ORDERER_NAME "1")
+  orderer_port=$(get_ORDERER_PORT "1")
+  orderer_domain="${orderer_name}.${BASE_DOMAIN}"
+  orderer_ca="crypto-config/ordererOrganizations/${BASE_DOMAIN}/orderers/${orderer_domain}/msp/tlscacerts/tlsca.${BASE_DOMAIN}-cert.pem"
+
   set -x
-  fcn_call='{"function":"'${CC_INIT_FUNCTION}'","Args":[]}'
-  infoln "invoke fcn call:${fcn_call}"
+  infoln "invoke fcn call:${CC_INIT_FUNCTION}"
+  #FABRIC_LOGGING_SPEC=DEBUG
   peer chaincode invoke \
     -o "${orderer_domain}":"${orderer_port}" \
     --ordererTLSHostnameOverride "${orderer_domain}" \
     --tls \
+    --cafile "${orderer_ca}" \
     -C "${CHANNEL_NAME}" \
     -n "${CC_NAME}" \
     "${PEER_CONN_PARMS}" \
     --isInit \
-    -c "${fcn_call}" >&log.txt
+    -c "${CC_INIT_FUNCTION}" >&log.txt
   res=$?
   { set +x; } 2>/dev/null
   cat log.txt
@@ -216,50 +270,6 @@ chaincodeInvokeInit() {
   successln "Invoke transaction successful on ${PEERS} on channel '$CHANNEL_NAME'"
 }
 
-function pushCcenvImagesFile() {
-  local org_index="$1"
-  local peer_index="$2"
-  local org_name org_domain peer_name peer_rootpw peer_domain
-  local temp_dir="${DEPLOY_PATH}/temp/ccenv"
-
-  org_name=$(get_ORG_NAME "${org_index}")
-  org_domain="${org_name}.${BASE_DOMAIN}"
-  peer_name=$(get_ORG_PEER_NAME "${org_index}" "${peer_index}")
-  peer_rootpw=$(get_ORG_PEER_ROOTPW "${org_index}" "${peer_index}")
-  peer_domain="${peer_name}.${org_domain}"
-
-  mkdir -p "${temp_dir}"
-
-  if [ ! -f "${temp_dir}/ccenv.tar" ]; then
-    tar -cf "${temp_dir}/ccenv.tar" ./images/files/ccenv/
-  fi
-
-  sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >"${temp_dir}"/ccenv_md5.log <<eeooff1
-  cd /var/hyperledger
-  if [ -f ccenv.tar ]; then
-    echo "ccenv.tar EXIST"
-  fi
-  exit
-eeooff1
-
-  local ret
-  ret=$(grep -n '^ccenv.tar' "${temp_dir}"/ccenv_md5.log | awk -F" " '{print $2}' | tr -d '\n\r')
-  echo "${ret}"
-  if [ "X${ret}" != "XEXIST" ]; then
-    sshpass -p "${peer_rootpw}" scp "${temp_dir}"/ccenv.tar root@"${peer_domain}":/var/hyperledger/ccenv.tar
-  else
-    infoln "ccenv.tar 文件存在，不需要上传。"
-  fi
-
-  sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >"${temp_dir}"/ccenv_dockerLoad.log <<eeooff2
-  cd /var/hyperledger
-  if [ ! -f /var/hyperledger/images/files/ccenv/*.tar ]; then
-     tar -xf ccenv.tar
-  fi
-  docker load < ./images/files/orderer/*.gz
-  exit
-eeooff2
-}
 
 # 参数解析
 function CC_parseConfig() {
@@ -393,8 +403,8 @@ function CC_deploy() {
     org_index=$(echo "${peer}" | awk -F"_" '{print $1}')
     peer_index=$(echo "${peer}" | awk -F"_" '{print $2}')
 
-#    installChaincode "${org_index}" "${peer_index}"
-#    queryInstalled "${org_index}" "${peer_index}"
+    installChaincode "${org_index}" "${peer_index}"
+    queryInstalled "${org_index}" "${peer_index}"
     local org_exist
     for org in "${!org_array[@]}"; do
       if [[ ${org} -eq $((org_index)) ]]; then
@@ -411,7 +421,7 @@ function CC_deploy() {
 
   local checkCommitResult=""
   for org in "${!org_array[@]}"; do
-    #approveForMyOrg "${org}" "${org_array[$org]}"
+    approveForMyOrg "${org}" "${org_array[$org]}"
     local org_msp_name
     org_msp_name=$(get_ORG_MSP_NAME "${org}")
     checkCommitResult="${checkCommitResult} \"${org_msp_name}\""
@@ -433,7 +443,7 @@ function CC_deploy() {
   done
 
   if [ "X${CC_INIT_FUNCTION}" == "X" ]; then
-    infoln "链码${CC_NAME} 不需要实例化。"
+    infoln "链码${CC_NAME} 不需要执行初始化函数。"
   else
     chaincodeInvokeInit ${params}
   fi

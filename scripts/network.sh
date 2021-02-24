@@ -178,9 +178,10 @@ eeooff1
 eeooff2
 
   sshpass -p "${orderer_rootpw}" ssh -tt root@"${orderer_domain}" >"${temp_dir}"/"${orderer_name}"_dockerUp.log <<eeooff3
+  cd  /var/hyperledger/config/docker
   docker rm ${orderer_domain} -vf && docker volume rm docker_${orderer_domain}
   docker ps
-  IMAGE_TAG="$IMAGE_TAG" docker-compose -f /var/hyperledger/config/docker/docker-compose-"${orderer_name}".yaml up -d
+  IMAGE_TAG="$IMAGE_TAG" docker-compose -f docker-compose-"${orderer_name}".yaml up -d
   docker ps
   exit
 eeooff3
@@ -271,9 +272,10 @@ eeooff2
 
   sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >"${temp_dir}"/"${peerOrgName}"_dockerUp.log <<eeooff3
 
+  cd /var/hyperledger/config/docker
   docker rm ${peer_domain} -vf && docker volume rm docker_${peer_domain}
   docker ps
-  IMAGE_TAG="${IMAGE_TAG}" docker-compose -f /var/hyperledger/config/docker/docker-compose-"${peerOrgName}".yaml up -d
+  IMAGE_TAG="${IMAGE_TAG}"  docker-compose -f docker-compose-"${peerOrgName}".yaml up -d
   docker ps
   exit
 eeooff3

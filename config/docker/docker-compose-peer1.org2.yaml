@@ -2,7 +2,8 @@ version: '2'
 
 volumes:
   peer1.org2.lianxiang.com:
-
+networks:
+  fchain:
 services:
 
   peer1.org2.lianxiang.com:
@@ -10,6 +11,7 @@ services:
     image: hyperledger/fabric-peer:$IMAGE_TAG
     environment:
       - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=docker_fchain
       - CORE_PEER_ID=peer1.org2.lianxiang.com
       - CORE_PEER_ADDRESS=peer1.org2.lianxiang.com:10051
       - CORE_PEER_LISTENADDRESS=0.0.0.0:10051
@@ -39,6 +41,8 @@ services:
       - 10051:10051
       - 10052:10052
       - 10053:10053
+    networks:
+      - fchain
     extra_hosts:
       - "orderer0.lianxiang.com:172.26.12.54"
       - "orderer1.lianxiang.com:172.26.0.79"

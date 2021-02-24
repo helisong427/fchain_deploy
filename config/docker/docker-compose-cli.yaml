@@ -1,25 +1,39 @@
 version: '2'
 
+networks:
+  fchain:
 services:
 
   cli:
-    container_name: cli
-    image: hyperledger/fabric-tools:$IMAGE_TAG
+    container_name: cli2
+    image: hyperledger/fabric-tools:amd64-2.2.1-bf63e7cb0
     tty: true
     stdin_open: true
     environment:
       - GOPATH=/opt/gopath
       - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
-      - FABRIC_LOGGING_SPEC=INFO
       #- FABRIC_LOGGING_SPEC=DEBUG
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_ID=cli
+      - CORE_PEER_ADDRESS=peer1.org1.lianxiang.com:8051
+      - CORE_PEER_LOCALMSPID=Org1MSP
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.lianxiang.com/peers/peer1.org1.lianxiang.com/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.lianxiang.com/peers/peer1.org1.lianxiang.com/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.lianxiang.com/peers/peer1.org1.lianxiang.com/tls/ca.crt
+      - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.lianxiang.com/users/Admin@org1.lianxiang.com/msp
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
     command: /bin/bash
     volumes:
       - /var/run/:/host/var/run/
-      - ../organizations:/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations
-      - ../scripts:/opt/gopath/src/github.com/hyperledger/fabric/peer/scripts/
-#    depends_on:
-#      - peer0.org1.example.com
-#      - peer0.org2.example.com
+      - ../crypto-config:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/
     networks:
-      - test
+      - fchain
+    extra_hosts:
+      - "orderer0.lianxiang.com:172.26.12.54"
+      - "orderer1.lianxiang.com:172.26.0.79"
+      - "orderer2.lianxiang.com:172.26.31.52"
+      - "peer0.org1.lianxiang.com:172.26.12.54"
+      - "peer1.org1.lianxiang.com:172.26.0.79"
+      - "peer0.org2.lianxiang.com:172.26.31.52"
+      - "peer1.org2.lianxiang.com:172.26.31.52"

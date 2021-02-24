@@ -52,7 +52,7 @@ CC_1_NAME="abstore"
 CC_1_VERSION="1"
 CC_1_PEERS="1_2 2_2"                                       #安装到那些peer上面（格式：orgindex_peerindex），多个用空格隔开
 CC_1_INIT="true"                                           #是否调用链码init方法（只有配置为"true"才调用）
-CC_1_INIT_FUNCTION="Init"                                  #链码的init方法（CC_INIT为"true"时才进行配置）
+CC_1_INIT_FUNCTION="{\"Args\":[\"Init\",\"a\",\"100\",\"b\",\"100\"]}"  #链码的init方法调用（CC_INIT为"true"时才进行配置）
 #CC_1_SIGNATURE_POLICY="AND('Org1MSP.peer','Org2MSP.peer')" # 链码背书策略（如果不指定，默认使用通道配置中的策略作为链码背书策略）
 CC_1_SEQUENCE="1"
 
