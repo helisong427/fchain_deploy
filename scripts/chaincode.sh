@@ -1,9 +1,7 @@
 #!/bin/bash
 
-
 function pushCcenvImagesFile() {
-  local org_index="$1"
-  local peer_index="$2"
+  local org_index="$1" peer_index="$2"
   local org_name org_domain peer_name peer_rootpw peer_domain
   local temp_dir="${DEPLOY_PATH}/temp/ccenv"
 
@@ -16,10 +14,10 @@ function pushCcenvImagesFile() {
   mkdir -p "${temp_dir}"
 
   if [ ! -f "${temp_dir}/ccenv.tar" ]; then
-    tar -cf "${temp_dir}/ccenv.tar" ./images/files/ccenv/ ./images/files/baseos/
+    tar -cf "${temp_dir}/ccenv.tar" images/files/ccenv/ images/files/baseos/
   fi
 
-  sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >"${temp_dir}"/ccenv_md5.log <<eeooff1
+  sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >"${temp_dir}"/ccenv_md5.txt <<eeooff1
   cd /var/hyperledger
   if [ -f ccenv.tar ]; then
     echo "ccenv.tar EXIST"
@@ -28,7 +26,7 @@ function pushCcenvImagesFile() {
 eeooff1
 
   local ret
-  ret=$(grep -n '^ccenv.tar' "${temp_dir}"/ccenv_md5.log | awk -F" " '{print $2}' | tr -d '\n\r')
+  ret=$(grep -n '^ccenv.tar' "${temp_dir}"/ccenv_md5.txt | awk -F" " '{print $2}' | tr -d '\n\r')
   echo "${ret}"
   if [ "X${ret}" != "XEXIST" ]; then
     sshpass -p "${peer_rootpw}" scp "${temp_dir}"/ccenv.tar root@"${peer_domain}":/var/hyperledger/ccenv.tar
@@ -36,11 +34,12 @@ eeooff1
     infoln "ccenv.tar 文件存在，不需要上传。"
   fi
 
-  sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >"${temp_dir}"/ccenv_dockerLoad.log <<eeooff2
+  sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >"${temp_dir}"/ccenv_dockerLoad.txt <<eeooff2
   cd /var/hyperledger
-  if [ ! -f ./images/files/ccenv/*.tar ]; then
+  if [ ! -f ./images/files/ccenv/*.tar ] || [ ! -f ./images/files/baseos/*.tar ]; then
      tar -xf ccenv.tar
   fi
+
   docker load < ./images/files/ccenv/*.tar
   docker load < ./images/files/baseos/*.tar
   exit
@@ -49,6 +48,11 @@ eeooff2
 
 # 打包链码
 function packageChaincode() {
+  set -e
+  pushd "${CC_SRC_PATH}" >/dev/null 2>&1
+  GO111MODULE=on go mod vendor
+  popd >/dev/null 2>&1
+  set +e
 
   local temp_dir="${DEPLOY_PATH}"/temp/chaincode/"${CC_NAME}"
   rm -rf "${temp_dir}" && mkdir -p "${temp_dir}"
@@ -63,8 +67,7 @@ function packageChaincode() {
 
 # 安装链码 参数：installChaincode org_index peer_index
 function installChaincode() {
-  local org_index=$1
-  local peer_index=$2
+  local org_index="$1" peer_index="$2"
   local temp_dir="${DEPLOY_PATH}"/temp/chaincode/"${CC_NAME}"
 
   if [ ! -f "${DEPLOY_PATH}"/temp/chaincode/"${CC_NAME}"/"${CC_NAME}".tar.gz ]; then
@@ -86,8 +89,7 @@ function installChaincode() {
 
 # 安装链码查询 queryInstalled org_index peer_index
 function queryInstalled() {
-  local org_index=$1
-  local peer_index=$2
+  local org_index="$1" peer_index="$2"
   setGlobals "${org_index}" "${peer_index}"
   set -x
   peer lifecycle chaincode queryinstalled >&log.txt
@@ -100,7 +102,6 @@ function queryInstalled() {
   if [ "X${PACKAGE_ID}" == "X" ]; then
     errorln "在peer peer${peer_index}.org${org_index} 查询不到安装的链码（${CC_NAME}_${CC_VERSION}）。"
   else
-    export PACKAGE_ID
     successln "在peer peer${peer_index}.org${org_index} 查询链码成功。链码ID：${PACKAGE_ID}"
   fi
 
@@ -108,8 +109,7 @@ function queryInstalled() {
 
 # 审批链码 approveForMyOrg VERSION PEER ORG
 function approveForMyOrg() {
-  local org_index=$1
-  local peer_index=$2
+  local org_index="$1" peer_index="$2"
 
   setGlobals "${org_index}" "${peer_index}"
 
@@ -134,15 +134,14 @@ function approveForMyOrg() {
   res=$?
   { set +x; } 2>/dev/null
   cat log.txt
-  verifyResult $res "链码在组织 (peer${peer_index}.org${org_index}) 的通道（'$CHANNEL_NAME'）上审批失败。"
-  successln "链码在组织 (peer${peer_index}.org${org_index}) 的通道（'$CHANNEL_NAME'）上审批完成。"
+  verifyResult $res "链码在组织 (peer${peer_index}.org${org_index}) 的通道（${CHANNEL_NAME}）上审批失败。"
+  successln "链码在组织 (peer${peer_index}.org${org_index}) 的通道（${CHANNEL_NAME}）上审批完成。"
 
 }
 
 # 检查链码是否审批通过 checkCommitReadiness VERSION PEER ORG
 checkCommitReadiness() {
-  local org_index=$1
-  local peer_index=$2
+  local org_index="$1" peer_index="$2"
   setGlobals "${org_index}" "${peer_index}"
   shift 2
 
@@ -202,7 +201,7 @@ commitChaincodeDefinition() {
     ${PEER_CONN_PARMS} \
     --version "${CC_VERSION}" \
     --sequence "${CC_SEQUENCE}" \
-    "${CC_INIT}"  >&log.txt
+    "${CC_INIT}" >&log.txt
   res=$?
   { set +x; } 2>/dev/null
   cat log.txt
@@ -212,8 +211,7 @@ commitChaincodeDefinition() {
 
 # 查询链码提交 queryCommitted ORG
 queryCommitted() {
-  local org_index=$1
-  local peer_index=$2
+  local org_index="$1" peer_index="$2"
   setGlobals "${org_index}" "${peer_index}"
   EXPECTED_RESULT="Version: ${CC_VERSION}, Sequence: ${CC_SEQUENCE}, Endorsement Plugin: escc, Validation Plugin: vscc"
   infoln "Querying chaincode definition on peer${peer_index}.org${org_index} on channel '$CHANNEL_NAME'..."
@@ -250,8 +248,8 @@ chaincodeInvokeInit() {
   orderer_domain="${orderer_name}.${BASE_DOMAIN}"
   orderer_ca="crypto-config/ordererOrganizations/${BASE_DOMAIN}/orderers/${orderer_domain}/msp/tlscacerts/tlsca.${BASE_DOMAIN}-cert.pem"
 
-  set -x
   infoln "invoke fcn call:${CC_INIT_FUNCTION}"
+  set -x
   #FABRIC_LOGGING_SPEC=DEBUG
   peer chaincode invoke \
     -o "${orderer_domain}":"${orderer_port}" \
@@ -270,7 +268,6 @@ chaincodeInvokeInit() {
   successln "Invoke transaction successful on ${PEERS} on channel '$CHANNEL_NAME'"
 }
 
-
 # 参数解析
 function CC_parseConfig() {
   if [ "${CC_NUMBER}" -lt 1 ]; then
@@ -284,6 +281,10 @@ function CC_parseConfig() {
     parse_CC_NAME "${i}"
     cc_name=$(get_CC_NAME "${i}")
     infoln "CC_${i}_NAME=${cc_name}"
+
+    if [ ! -d "${DEPLOY_PATH}/chaincode/${cc_name}/go" ]; then
+      fatalln "链码${cc_name} 文件目录不存在（${DEPLOY_PATH}/chaincode/${cc_name}/go）。"
+    fi
 
     parse_CC_VERSION "${i}"
     cc_version=$(get_CC_VERSION "${i}")
@@ -310,7 +311,7 @@ function CC_parseConfig() {
     for peer in "${peers[@]}"; do
       local org_index peer_index
       org_index=$(echo "${peer}" | awk -F"_" '{print $1}')
-      peer_index=$(echo "${peer}" | awk -F"_" '{print $2}')
+      peer_index=$(echo "${peer}" | awk -F"_" '{print "$2"}')
 
       parse_ORG_PEER_NAME "${org_index}" "${peer_index}"
       parse_ORG_PEER_ROOTPW "${org_index}" "${peer_index}"
@@ -337,23 +338,19 @@ function CC_parseConfig() {
 }
 
 function CC_exportEnv() {
-  local cc_index=$1
+  local cc_index="$1"
   # 解析参数
   unset CC_NAME
   CC_NAME=$(get_CC_NAME "${cc_index}") || true
-  export CC_NAME
 
   unset CC_VERSION
   CC_VERSION=$(get_CC_VERSION "${cc_index}") || true
-  export CC_VERSION
 
   unset CC_PEERS
   CC_PEERS=$(get_CC_PEERS "${cc_index}") || true
-  export CC_PEERS
 
   unset CC_SEQUENCE
   CC_SEQUENCE=$(get_CC_SEQUENCE "${cc_index}") || true
-  export CC_SEQUENCE
 
   unset CC_INIT
   local cc_init
@@ -361,34 +358,29 @@ function CC_exportEnv() {
   if [ "X${cc_init}" == "Xtrue" ]; then
     unset CC_INIT_FUNCTION
     CC_INIT_FUNCTION=$(get_CC_INIT_FUNCTION "${cc_index}") || true
-    export CC_INIT_FUNCTION
+
     CC_INIT="--init-required"
   else
     CC_INIT=""
   fi
-  export CC_INIT
 
-#  unset CC_SIGNATURE_POLICY
-#  local cc_signature_policy
-#  cc_signature_policy=$(get_CC_SIGNATURE_POLICY "${cc_index}") || true
-#  if [ "X${cc_signature_policy}" == "X" ]; then
-#    CC_SIGNATURE_POLICY="--channel-config-policy"
-#  else
-#    CC_SIGNATURE_POLICY="--signature-policy ${cc_signature_policy}"
-#  fi
-#  export CC_SIGNATURE_POLICY
+  #  unset CC_SIGNATURE_POLICY
+  #  local cc_signature_policy
+  #  cc_signature_policy=$(get_CC_SIGNATURE_POLICY "${cc_index}") || true
+  #  if [ "X${cc_signature_policy}" == "X" ]; then
+  #    CC_SIGNATURE_POLICY="--channel-config-policy"
+  #  else
+  #    CC_SIGNATURE_POLICY="--signature-policy ${cc_signature_policy}"
+  #  fi
 
   unset CC_SRC_PATH
   CC_SRC_PATH="${DEPLOY_PATH}/chaincode/${CC_NAME}/go" || true
-  export CC_SRC_PATH
 
   unset CC_RUNTIME_LANGUAGE
   CC_RUNTIME_LANGUAGE="golang"
-  export CC_RUNTIME_LANGUAGE
 
   unset CC_COLL_CONFIG
   CC_COLL_CONFIG=""
-  export CC_COLL_CONFIG
 
 }
 

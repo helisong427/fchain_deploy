@@ -1,9 +1,11 @@
 #!/bin/bash
 
-export PATH=${PWD}/images/bin:$PATH
-export FABRIC_CFG_PATH=${PWD}/config
+readonly DEPLOY_PATH="${PWD}"
 
-DEPLOY_PATH="${PWD}"
+export PATH=${DEPLOY_PATH}/images/bin:$PATH
+export FABRIC_CFG_PATH=${DEPLOY_PATH}/config
+
+
 
 #set -euo pipefail
 
@@ -15,7 +17,6 @@ DEPLOY_PATH="${PWD}"
 . scripts/network.sh
 . scripts/channel.sh
 . scripts/chaincode.sh
-
 
 if ! check_env; then
   fatalln "Unable to start network"
@@ -47,33 +48,35 @@ while [[ $# -ge 1 ]]; do
   shift
 done
 
-
 function parseConfig() {
-  if [ "X$CHANNEL_NAME" == "X" ]; then
+
+  if [ "X${CRYPTO}" != "XCA" ] && [ "X${CRYPTO}" != "XCRYPTOGEN" ]; then
+      fatalln "config CRYPTO 只能为'CA'或者'CRYPTOGEN'。"
+  fi
+
+  if [ "X${CHANNEL_NAME}" == "X" ]; then
     fatalln "config CHANNEL_NAME 不能为空。"
   fi
-  infoln "CHANNEL_NAME=$CHANNEL_NAME"
-  if [ "X$PROFILE_GENESIS" == "X" ]; then
+  infoln "CHANNEL_NAME=${CHANNEL_NAME}"
+  if [ "X${PROFILE_GENESIS}" == "X" ]; then
     fatalln "config PROFILE_GENESIS 不能为空。"
   fi
-  infoln "PROFILE_GENESIS=$PROFILE_GENESIS"
+  infoln "PROFILE_GENESIS=${PROFILE_GENESIS}"
 
-  if [ "X$IMAGE_TAG" == "X" ]; then
+  if [ "X${IMAGE_TAG}" == "X" ]; then
     fatalln "config IMAGE_TAG 不能为空。"
   fi
-  infoln "IMAGE_TAG=$IMAGE_TAG"
-  if [ "X$BASE_DOMAIN" == "X" ]; then
+  infoln "IMAGE_TAG=${IMAGE_TAG}"
+  if [ "X${BASE_DOMAIN}" == "X" ]; then
     fatalln "config BASE_DOMAIN 不能为空。"
   fi
-  infoln "BASE_DOMAIN=$BASE_DOMAIN"
+  infoln "BASE_DOMAIN=${BASE_DOMAIN}"
 
   orderer_parseConfig
   peer_parseConfig
   CC_parseConfig
 
 }
-
-
 
 function network() {
 

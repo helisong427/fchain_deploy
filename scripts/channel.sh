@@ -7,16 +7,17 @@ DELAY="3"
 # Writes the current channel config for a given channel to a JSON file
 # NOTE: this must be run in a CLI container since it requires configtxlator
 function fetchChannelConfig() {
-  local tempDir=$1
-  local output=$2
-
-  #setGlobals "${org_index}" "${peer_index}"
+  local tempDir="$1" output="$2"
 
   infoln "Fetching the most recent configuration block for the channel"
   set -x
-
-  peer channel fetch config "${tempDir}"/config_block.pb -o "${ORDERER_1_NAME}.${BASE_DOMAIN}:${ORDERER_1_PORT}" --ordererTLSHostnameOverride "${ORDERER_1_NAME}.${BASE_DOMAIN}" \
-    -c "${CHANNEL_NAME}" --tls --cafile "./crypto-config/ordererOrganizations/${BASE_DOMAIN}/orderers/${ORDERER_1_NAME}.${BASE_DOMAIN}/msp/tlscacerts/tlsca.${BASE_DOMAIN}-cert.pem"
+  peer channel fetch config "${tempDir}"/config_block.pb \
+    -o "${ORDERER_1_NAME}.${BASE_DOMAIN}:${ORDERER_1_PORT}" \
+    --ordererTLSHostnameOverride "${ORDERER_1_NAME}.${BASE_DOMAIN}" \
+    -c "${CHANNEL_NAME}" \
+    --tls \
+    --cafile "crypto-config/ordererOrganizations/${BASE_DOMAIN}/orderers/${ORDERER_1_NAME}.${BASE_DOMAIN}/msp/tlscacerts/tlsca.${BASE_DOMAIN}-cert.pem" \
+    >&log.txt
   { set +x; } 2>/dev/null
 
   infoln "Decoding config block to JSON and isolating config to ${output}"
@@ -30,26 +31,22 @@ function fetchChannelConfig() {
 # which transitions between the two
 # NOTE: this must be run in a CLI container since it requires configtxlator
 function createConfigUpdate() {
-  local TEMPDIR=$1
-  local ORIGINAL=$2
-  local MODIFIED=$3
-  local OUTPUT=$4
+  local temp_dir="$1" original="$2" modified="$3" output="$4"
 
   set -x
-  configtxlator proto_encode --input "${ORIGINAL}" --type common.Config >"${TEMPDIR}"/original_config.pb
-  configtxlator proto_encode --input "${MODIFIED}" --type common.Config >"${TEMPDIR}"/modified_config.pb
-  configtxlator compute_update --channel_id "${CHANNEL_NAME}" --original "${TEMPDIR}"/original_config.pb --updated "${TEMPDIR}"/modified_config.pb >"${TEMPDIR}"/config_update.pb
-  configtxlator proto_decode --input "${TEMPDIR}"/config_update.pb --type common.ConfigUpdate >"${TEMPDIR}"/config_update.json
-  echo '{"payload":{"header":{"channel_header":{"channel_id":"'"${CHANNEL_NAME}"'", "type":2}},"data":{"config_update":'$(cat "${TEMPDIR}"/config_update.json)'}}}' | jq . >"${TEMPDIR}"/config_update_in_envelope.json
-  configtxlator proto_encode --input "${TEMPDIR}"/config_update_in_envelope.json --type common.Envelope >"${OUTPUT}"
+  configtxlator proto_encode --input "${original}" --type common.Config >"${temp_dir}"/original_config.pb
+  configtxlator proto_encode --input "${modified}" --type common.Config >"${temp_dir}"/modified_config.pb
+  configtxlator compute_update --channel_id "${CHANNEL_NAME}" --original "${temp_dir}"/original_config.pb --updated "${temp_dir}"/modified_config.pb >"${temp_dir}"/config_update.pb
+  configtxlator proto_decode --input "${temp_dir}"/config_update.pb --type common.ConfigUpdate >"${temp_dir}"/config_update.json
+  echo '{"payload":{"header":{"channel_header":{"channel_id":"'"${CHANNEL_NAME}"'", "type":2}},"data":{"config_update":'$(cat "${temp_dir}"/config_update.json)'}}}' | jq . >"${temp_dir}"/config_update_in_envelope.json
+  configtxlator proto_encode --input "${temp_dir}"/config_update_in_envelope.json --type common.Envelope >"${output}"
   { set +x; } 2>/dev/null
 }
 
 # signConfigtxAsPeerOrg <org> <configtx.pb>
 # Set the peerOrg admin of an org and sign the config update
 function signConfigtxAsPeerOrg() {
-  local ORG=$1
-  local CONFIGTXFILE=$2
+  local ORG="$1" CONFIGTXFILE="$2"
   setGlobals $ORG
   set -x
   peer channel signconfigtx -f "${CONFIGTXFILE}"
@@ -58,14 +55,16 @@ function signConfigtxAsPeerOrg() {
 
 function createChannelTx() {
   set -x
-  configtxgen -profile TwoOrgsChannel -outputCreateChannelTx ./config/channel-artifacts/"${CHANNEL_NAME}".tx -channelID "${CHANNEL_NAME}"
+  configtxgen -profile TwoOrgsChannel \
+  -outputCreateChannelTx "${DEPLOY_PATH}"/config/channel-artifacts/"${CHANNEL_NAME}".tx \
+  -channelID "${CHANNEL_NAME}"
   local res=$?
   { set +x; } 2>/dev/null
   verifyResult $res "创建通道TX文件(${CHANNEL_NAME}.tx)失败。"
 }
 
 function createChannelTx_clean() {
-  rm -rf ./config/channel-artifacts/"${CHANNEL_NAME}".tx
+  rm -rf "${DEPLOY_PATH}"/config/channel-artifacts/"${CHANNEL_NAME}".tx
 }
 
 function channelCreate() {
@@ -77,9 +76,15 @@ function channelCreate() {
   while [ $rc -ne 0 -a $COUNTER -lt $MAX_RETRY ]; do
     sleep $DELAY
     set -x
-    peer channel create -o "${ORDERER_1_NAME}.${BASE_DOMAIN}:${ORDERER_1_PORT}" -c "${CHANNEL_NAME}" --ordererTLSHostnameOverride \
-      "${ORDERER_1_NAME}.${BASE_DOMAIN}" -f ./config/channel-artifacts/"${CHANNEL_NAME}".tx --outputBlock ./config/channel-artifacts/"${CHANNEL_NAME}".block \
-      --tls --cafile "crypto-config/ordererOrganizations/${BASE_DOMAIN}/orderers/${ORDERER_1_NAME}.${BASE_DOMAIN}/msp/tlscacerts/tlsca.${BASE_DOMAIN}-cert.pem" >&log.txt
+    peer channel create \
+      -o "${ORDERER_1_NAME}.${BASE_DOMAIN}:${ORDERER_1_PORT}" \
+      -c "${CHANNEL_NAME}" \
+      --ordererTLSHostnameOverride "${ORDERER_1_NAME}.${BASE_DOMAIN}" \
+      -f "${DEPLOY_PATH}"/config/channel-artifacts/"${CHANNEL_NAME}".tx \
+      --outputBlock "${DEPLOY_PATH}"/config/channel-artifacts/"${CHANNEL_NAME}".block \
+      --tls \
+      --cafile "crypto-config/ordererOrganizations/${BASE_DOMAIN}/orderers/${ORDERER_1_NAME}.${BASE_DOMAIN}/msp/tlscacerts/tlsca.${BASE_DOMAIN}-cert.pem" \
+       >&log.txt
     res=$?
     { set +x; } 2>/dev/null
     let rc=$res
@@ -89,23 +94,21 @@ function channelCreate() {
   verifyResult $res "通道创建失败。"
 }
 function channelCreate_clean() {
-  rm -rf ./config/channel-artifacts/"${CHANNEL_NAME}".block
+  rm -rf "${DEPLOY_PATH}"/config/channel-artifacts/"${CHANNEL_NAME}".block
 }
 
 function joinChannel() {
 
-  local org_index="$1"
-  local peer_index="$2"
+  local org_index="$1" peer_index="$2"
 
   setGlobals "${org_index}" "${peer_index}"
 
-  local rc=1
-  local COUNTER=1
+  local rc=1 COUNTER=1
   ## Sometimes Join takes time, hence retry
   while [ $rc -ne 0 -a $COUNTER -lt $MAX_RETRY ]; do
     sleep $DELAY
     set -x
-    peer channel join -b ./config/channel-artifacts/"${CHANNEL_NAME}".block >&log.txt
+    peer channel join -b "${DEPLOY_PATH}"/config/channel-artifacts/"${CHANNEL_NAME}".block >&log.txt
     res=$?
     { set +x; } 2>/dev/null
     let rc=$res
@@ -118,6 +121,7 @@ function joinChannel() {
 function setAnchorPeer() {
   local org_index="$1"
   local org_name org_anchor_peer_index org_anchor_peer_name org_anchor_peer_port org_anchor_peer_domain
+  local tempDir="${DEPLOY_PATH}/temp/createChannel/${CORE_PEER_LOCALMSPID}"
 
   org_name=$(get_ORG_NAME "${org_index}")
   org_anchor_peer_index=$(get_ORG_ANCHOR "${org_index}")
@@ -126,8 +130,6 @@ function setAnchorPeer() {
   org_anchor_peer_domain="${org_anchor_peer_name}.${org_name}.${BASE_DOMAIN}"
 
   setGlobals "${org_index}" "${org_anchor_peer_index}"
-
-  local tempDir="./temp/createChannel/${CORE_PEER_LOCALMSPID}"
 
   rm -rf "${tempDir}" && mkdir -p "${tempDir}"
 
@@ -142,11 +144,20 @@ function setAnchorPeer() {
   # Compute a config update, based on the differences between
   # {orgmsp}config.json and {orgmsp}modified_config.json, write
   # it as a transaction to {orgmsp}anchors.tx
-  createConfigUpdate "${tempDir}" "${tempDir}"/"${CORE_PEER_LOCALMSPID}"_config.json "${tempDir}"/"${CORE_PEER_LOCALMSPID}"_modified_config.json "${tempDir}"/"${CORE_PEER_LOCALMSPID}"_anchors.tx
+  createConfigUpdate \
+    "${tempDir}" \
+    "${tempDir}"/"${CORE_PEER_LOCALMSPID}"_config.json \
+    "${tempDir}"/"${CORE_PEER_LOCALMSPID}"_modified_config.json \
+    "${tempDir}"/"${CORE_PEER_LOCALMSPID}"_anchors.tx
+
   set -x
-  peer channel update -o "${ORDERER_1_NAME}.${BASE_DOMAIN}:${ORDERER_1_PORT}" --ordererTLSHostnameOverride \
-    "${ORDERER_1_NAME}.${BASE_DOMAIN}" -c "${CHANNEL_NAME}" -f "${tempDir}"/"${CORE_PEER_LOCALMSPID}"_anchors.tx \
-    --tls --cafile "./crypto-config/ordererOrganizations/${BASE_DOMAIN}/orderers/${ORDERER_1_NAME}.${BASE_DOMAIN}/msp/tlscacerts/tlsca.${BASE_DOMAIN}-cert.pem" >&log.txt
+  peer channel update \
+    -o "${ORDERER_1_NAME}.${BASE_DOMAIN}:${ORDERER_1_PORT}" \
+    --ordererTLSHostnameOverride "${ORDERER_1_NAME}.${BASE_DOMAIN}" \
+    -c "${CHANNEL_NAME}" -f "${tempDir}"/"${CORE_PEER_LOCALMSPID}"_anchors.tx \
+    --tls \
+    --cafile "crypto-config/ordererOrganizations/${BASE_DOMAIN}/orderers/${ORDERER_1_NAME}.${BASE_DOMAIN}/msp/tlscacerts/tlsca.${BASE_DOMAIN}-cert.pem" \
+    >&log.txt
   res=$?
   { set +x; } 2>/dev/null
   cat log.txt

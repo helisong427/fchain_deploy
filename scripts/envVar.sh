@@ -2,10 +2,9 @@
 
 # Set environment variables for the peer org
 function setGlobals() {
-  org_index="$1"
-  peer_index="$2"
-
+  local org_index="$1" peer_index="$2"
   local org_name org_msp org_domain peer_name peer_port
+
   org_name=$(get_ORG_NAME "${org_index}")
   org_msp=$(get_ORG_MSP_NAME "${org_index}")
   org_domain="${org_name}.${BASE_DOMAIN}"
@@ -32,11 +31,9 @@ function verifyResult() {
 # Helper function that sets the peer connection parameters for a chaincode
 # operation
 function parsePeerConnectionParameters() {
-  PEER_CONN_PARMS=""
-  PEERS=""
+  PEER_CONN_PARMS="" PEERS=""
   while [ "$#" -gt 0 ]; do
-    local org_index=$1
-    local peer_index=$2
+    local org_index=$1 peer_index=$2
     setGlobals "${org_index}" "${peer_index}"
     PEER="peer${peer_index}.org${org_index}"
     local org_name peer_name

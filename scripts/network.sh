@@ -70,20 +70,26 @@ function peer_parseConfig() {
   done
 }
 
-function generateConfig() {
+function generateCrypto() {
 
-  if ! which cryptogen; then
-    fatalln "cryptogen tool not found. exiting"
-  fi
-
-  if [ -d "./config/crypto-config" ]; then
-    rm -Rf "./config/crypto-config"
+  if [ -d "${DEPLOY_PATH}/config/crypto-config" ]; then
+    rm -Rf "${DEPLOY_PATH}/config/crypto-config"
   fi
 
   # 生成证书配置
-  cryptogen generate --config=./config/crypto-config.yaml --output ./config/crypto-config/
-  if [[ $# -lt 0 ]]; then
-    errorln "生成证书文件失败."
+  if [ "X${CRYPTO}" != "XCRYPTOGEN" ]; then
+    if ! which cryptogen; then
+      fatalln "cryptogen tool not found. exiting"
+    fi
+
+    cryptogen generate --config="${DEPLOY_PATH}"/config/crypto-config.yaml --output "${DEPLOY_PATH}"/config/crypto-config/
+    if [[ $# -lt 0 ]]; then
+      errorln "生成证书文件失败."
+    fi
+#  elif [ "X${CRYPTO}" != "XCA" ]; then
+#
+#  IMAGE_TAG=${CA_IMAGETAG} docker-compose -f $COMPOSE_FILE_CA up -d 2>&1
+
   fi
 
   infoln "生成证书文件完成。"
@@ -91,16 +97,16 @@ function generateConfig() {
 
 function createConsortium() {
 
-  if which configtxgen -ne 0 ; then
+  if which configtxgen -ne 0; then
     fatalln "configtxgen tool not found."
   fi
 
-  if [ -f "./config/system-genesis-block/genesis.block" ]; then
-    rm -Rf "./config/system-genesis-block/genesis.block"
+  if [ -f "${DEPLOY_PATH}/config/system-genesis-block/genesis.block" ]; then
+    rm -Rf "${DEPLOY_PATH}/config/system-genesis-block/genesis.block"
   fi
 
   set -x
-  configtxgen -profile "${PROFILE_GENESIS}" -channelID system-channel -outputBlock ./config/system-genesis-block/genesis.block
+  configtxgen -profile "${PROFILE_GENESIS}" -channelID system-channel -outputBlock "${DEPLOY_PATH}"/config/system-genesis-block/genesis.block
   res=$?
   { set +x; } 2>/dev/null
   if [ $res -ne 0 ]; then
@@ -112,9 +118,7 @@ function createConsortium() {
 
 function startupOrderer() {
 
-  local orderer_name="$1"
-  local orderer_domain="$2"
-  local orderer_rootpw="$3"
+  local orderer_name="$1" orderer_domain="$2" orderer_rootpw="$3"
 
   if [ "X${orderer_name}" == "X" ]; then
     fatalln "启动orderer失败：startupOrderer，第一个参数（orderer name）为空。"
@@ -134,10 +138,10 @@ function startupOrderer() {
 
   # 打包orderer配置文件和镜像
   tar -cf "${temp_dir}"/"${orderer_name}".tar \
-    ./config/crypto-config/ordererOrganizations/"${BASE_DOMAIN}"/orderers/"${orderer_name}"."${BASE_DOMAIN}"/ \
-    ./images/files/orderer/ \
-    ./config/system-genesis-block/genesis.block \
-    ./config/docker/docker-compose-"${orderer_name}".yaml
+    config/crypto-config/ordererOrganizations/"${BASE_DOMAIN}"/orderers/"${orderer_name}"."${BASE_DOMAIN}"/ \
+    images/files/orderer/ \
+    config/system-genesis-block/genesis.block \
+    config/docker/docker-compose-"${orderer_name}".yaml
 
   # cd "${temp_dir}" && md5sum "${orderer_name}".tar >"${orderer_name}".md5 && cd "${DEPLOY_PATH}"
   set -e
@@ -155,7 +159,7 @@ eeooff0
 
   sshpass -p "${orderer_rootpw}" scp "${temp_dir}"/"${orderer_name}".md5 root@"${orderer_domain}":/var/hyperledger/"${orderer_name}".md5
 
-  sshpass -p "${orderer_rootpw}" ssh -tt root@"${orderer_domain}" >"${temp_dir}"/"${orderer_name}"_md5.log <<eeooff1
+  sshpass -p "${orderer_rootpw}" ssh -tt root@"${orderer_domain}" >"${temp_dir}"/"${orderer_name}"_md5.txt <<eeooff1
   cd /var/hyperledger
   if [ -f "${orderer_name}".tar ]; then
     md5sum -c "${orderer_name}".md5
@@ -163,21 +167,22 @@ eeooff0
   exit
 eeooff1
   local ret
-  ret=$(grep "${orderer_name}".tar "${temp_dir}"/"${orderer_name}"_md5.log | awk -F" " '{print $2}' | tr -d '\n\r')
+  ret=$(grep "${orderer_name}".tar "${temp_dir}"/"${orderer_name}"_md5.txt | awk -F" " '{print $2}' | tr -d '\n\r')
   if [ "X${ret}" != "XOK" ] && [ "X${ret}" != "X确定" ] && [ "X${ret}" != "X成功" ]; then
     sshpass -p "${orderer_rootpw}" scp "${temp_dir}"/"${orderer_name}".tar root@"${orderer_domain}":/var/hyperledger/"${orderer_name}".tar
   else
     infoln "${orderer_name}.tar 文件存在，不需要上传。"
   fi
 
-  sshpass -p "${orderer_rootpw}" ssh -tt root@"${orderer_domain}" >"${temp_dir}"/"${orderer_name}"_dockerLoad.log <<eeooff2
-  cd /var/hyperledger && rm -rf ./config/crypto-config/ordererOrganizations/"${BASE_DOMAIN}"/orderers/"${orderer_name}"."${BASE_DOMAIN}"/ \
-  ./images/files/orderer/ && tar -xf "${orderer_name}".tar
+  sshpass -p "${orderer_rootpw}" ssh -tt root@"${orderer_domain}" >"${temp_dir}"/"${orderer_name}"_dockerLoad.txt <<eeooff2
+  cd /var/hyperledger && \
+  rm -rf ./config/crypto-config/ordererOrganizations/"${BASE_DOMAIN}"/orderers/"${orderer_name}"."${BASE_DOMAIN}"/ ./images/files/orderer/ && \
+  tar -xf "${orderer_name}".tar && \
   docker load < ./images/files/orderer/*.gz
   exit
 eeooff2
 
-  sshpass -p "${orderer_rootpw}" ssh -tt root@"${orderer_domain}" >"${temp_dir}"/"${orderer_name}"_dockerUp.log <<eeooff3
+  sshpass -p "${orderer_rootpw}" ssh -tt root@"${orderer_domain}" >"${temp_dir}"/"${orderer_name}"_dockerUp.txt <<eeooff3
   cd  /var/hyperledger/config/docker
   docker rm ${orderer_domain} -vf && docker volume rm docker_${orderer_domain}
   docker ps
@@ -192,19 +197,17 @@ eeooff3
 function startupOrderer_clean() {
 
   local orderer_name="$1"
+  local temp_dir="${DEPLOY_PATH}/temp/${orderer_name}"
+
   if [ "X${orderer_name}" == "X" ]; then
     fatalln "启动orderer失败：startupOrderer，第一个参数（orderer name）为空。"
   fi
-  local temp_dir="${DEPLOY_PATH}/temp/${orderer_name}"
   rm -rf "${temp_dir}"
 }
 
 function startupPeer() {
 
-  local peer_name="$1"
-  local org_name="$2"
-  local peer_domain="$3"
-  local peer_rootpw="$4"
+  local peer_name="$1" org_name="$2" peer_domain="$3" peer_rootpw="$4"
 
   if [ "X${peer_name}" == "X" ]; then
     fatalln "启动peer失败：startupPeer 第一个参数（peer name）为空。"
@@ -228,9 +231,9 @@ function startupPeer() {
   rm -rf "${temp_dir}" && mkdir -p "${temp_dir}"
   # 打包orderer配置文件和镜像
   tar -cf "${temp_dir}"/"${peerOrgName}".tar \
-    ./config/crypto-config/peerOrganizations/"${org_name}"."${BASE_DOMAIN}"/peers/"${peerOrgName}"."${BASE_DOMAIN}" \
-    ./images/files/peer/ \
-    ./config/docker/docker-compose-"${peerOrgName}".yaml
+    config/crypto-config/peerOrganizations/"${org_name}"."${BASE_DOMAIN}"/peers/"${peerOrgName}"."${BASE_DOMAIN}" \
+    images/files/peer/ \
+    config/docker/docker-compose-"${peerOrgName}".yaml
 
   #cd "${temp_dir}" && md5sum "${peerOrgName}".tar >"${peerOrgName}".md5 && cd "${DEPLOY_PATH}"
   set -e
@@ -247,7 +250,7 @@ function startupPeer() {
 eeooff0
 
   sshpass -p "${peer_rootpw}" scp "${temp_dir}"/"${peerOrgName}".md5 root@"${peer_domain}":/var/hyperledger/"${peerOrgName}".md5
-  sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >"${temp_dir}"/"${peerOrgName}"_md5.log <<eeooff1
+  sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >"${temp_dir}"/"${peerOrgName}"_md5.txt <<eeooff1
   cd /var/hyperledger
   if [ -f "${peerOrgName}".tar ]; then
     md5sum -c "${peerOrgName}".md5
@@ -256,21 +259,21 @@ eeooff0
 eeooff1
 
   local ret
-  ret=$(grep "${peerOrgName}".tar "${temp_dir}/${peerOrgName}"_md5.log | awk -F" " '{print $2}' | tr -d '\n\r')
+  ret=$(grep "${peerOrgName}".tar "${temp_dir}/${peerOrgName}"_md5.txt | awk -F" " '{print $2}' | tr -d '\n\r')
   if [ "X${ret}" != "XOK" ] && [ "X${ret}" != "X确定" ] && [ "X${ret}" != "X成功" ]; then
     sshpass -p "${peer_rootpw}" scp "${temp_dir}"/"${peerOrgName}".tar root@"${peer_domain}":/var/hyperledger/"${peerOrgName}".tar
   else
     infoln "${peerOrgName}.tar 文件存在，不需要上传。"
   fi
 
-  sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >"${temp_dir}"/"${peerOrgName}"_dockerLoad.log <<eeooff2
-  cd /var/hyperledger && rm -rf ./config/crypto-config/peerOrganizations/"${org_name}"."${BASE_DOMAIN}"/peers/"${peerOrgName}"."${BASE_DOMAIN}"/ \
-  ./images/files/peer/ && tar -xf "${peerOrgName}".tar
+  sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >"${temp_dir}"/"${peerOrgName}"_dockerLoad.txt <<eeooff2
+  cd /var/hyperledger && \
+  rm -rf ./config/crypto-config/peerOrganizations/"${org_name}"."${BASE_DOMAIN}"/peers/"${peerOrgName}"."${BASE_DOMAIN}"/ ./images/files/peer/ && tar -xf "${peerOrgName}".tar && \
   docker load < ./images/files/peer/*.gz
   exit
 eeooff2
 
-  sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >"${temp_dir}"/"${peerOrgName}"_dockerUp.log <<eeooff3
+  sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >"${temp_dir}"/"${peerOrgName}"_dockerUp.txt <<eeooff3
 
   cd /var/hyperledger/config/docker
   docker rm ${peer_domain} -vf && docker volume rm docker_${peer_domain}
@@ -285,8 +288,7 @@ eeooff3
 
 function startupPeer_clean() {
 
-  local peer_name="$1"
-  local org_name="$2"
+  local peer_name="$1" org_name="$2"
 
   if [ "X${peer_name}" == "X" ]; then
     fatalln "启动peer失败：startupPeer 第一个参数（peer name）为空。"
@@ -305,8 +307,8 @@ function startupPeer_clean() {
 
 function NETWORK_up() {
 
-  if [ ! -d "./config/crypto-config/peerOrganizations" ]; then
-    generateConfig "a"
+  if [ ! -d "${DEPLOY_PATH}/config/crypto-config/peerOrganizations" ]; then
+    generateCrypto "a"
     createConsortium
   fi
 
