@@ -443,7 +443,17 @@ function CC_deploy() {
   infoln "======>   ${CC_NAME} 链码部署完成。"
 }
 
-function CC_clean() {
-  local temp_dir="${DEPLOY_PATH}"/temp/chaincode/"${cc_name}"
-  rm -rf "${temp_dir}"
+function CHAINCODE() {
+
+  local mode="$1"
+  for ((i = 1; i <= CC_NUMBER; i++)); do
+    CC_exportEnv "${i}"
+    if [ "X${mode}" == "Xstart" ]; then
+      CC_deploy
+    elif [ "X${mode}" == "Xclean" ]; then
+      rm -rf "${DEPLOY_PATH}"/temp/chaincode/"${CC_NAME}"
+    else
+      fatalln " CHAINCODE 函数的参数错误。"
+    fi
+  done
 }

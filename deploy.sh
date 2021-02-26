@@ -5,8 +5,6 @@ readonly DEPLOY_PATH="${PWD}"
 export PATH=${DEPLOY_PATH}/images/bin:$PATH
 export FABRIC_CFG_PATH=${DEPLOY_PATH}/config
 
-
-
 #set -euo pipefail
 
 . scripts/utils.sh
@@ -78,59 +76,20 @@ function parseConfig() {
 
 }
 
-function network() {
-
-  mode="$1"
-  if [ "X${mode}" == "Xstart" ]; then
-    NETWORK_up
-  elif [ "X${mode}" == "Xclean" ]; then
-    NETWORK_down
-  else
-    fatalln "networkUp 函数的参数错误。"
-  fi
-
-}
-
-function channel() {
-
-  mode="$1"
-  if [ "X${mode}" == "Xstart" ]; then
-    CHANNEL_create
-  elif [ "X${mode}" == "Xclean" ]; then
-    CHANNEL_clean
-  else
-    fatalln "createChannel 函数的参数错误。"
-  fi
-}
-
-function chaincode() {
-
-  mode="$1"
-  for ((i = 1; i <= CC_NUMBER; i++)); do
-    CC_exportEnv "${i}"
-    if [ "X${mode}" == "Xstart" ]; then
-      CC_deploy
-    elif [ "X${mode}" == "Xclean" ]; then
-      CC_clean
-    else
-      fatalln " deployCC 函数的参数错误。"
-    fi
-  done
-}
-
 # 检查参数配置
 parseConfig
 
+
 if [ "${MODE}" == "up" ]; then
-  network start
+  NETWORK start
 elif [ "${MODE}" == "createChannel" ]; then
-  channel start
+  CHANNEL start
 elif [ "${MODE}" == "deployCC" ]; then
-  chaincode start
+  CHAINCODE start
 elif [ "${MODE}" == "clean" ]; then
-  chaincode clean
-  channel clean
-  network clean
+  CHAINCODE clean
+  CHANNEL clean
+  NETWORK clean
 else
   printHelp
   exit 1

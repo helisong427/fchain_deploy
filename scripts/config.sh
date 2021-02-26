@@ -2,7 +2,7 @@
 
 ########### 基本配置
 # 生成配置文件的方式，支持两种方式：CA和CRYPTOGEN
-readonly CRYPTO="CA1"
+readonly CRYPTO="CRYPTOGEN"
 readonly CHANNEL_NAME="mychannel"
 #通道配置文件configtx.yaml中 Profiles 域中关于创世块的配置域的域名
 readonly PROFILE_GENESIS="TwoOrgsOrdererGenesis"

@@ -56,15 +56,11 @@ function signConfigtxAsPeerOrg() {
 function createChannelTx() {
   set -x
   configtxgen -profile TwoOrgsChannel \
-  -outputCreateChannelTx "${DEPLOY_PATH}"/config/channel-artifacts/"${CHANNEL_NAME}".tx \
-  -channelID "${CHANNEL_NAME}"
+    -outputCreateChannelTx "${DEPLOY_PATH}"/config/channel-artifacts/"${CHANNEL_NAME}".tx \
+    -channelID "${CHANNEL_NAME}"
   local res=$?
   { set +x; } 2>/dev/null
   verifyResult $res "创建通道TX文件(${CHANNEL_NAME}.tx)失败。"
-}
-
-function createChannelTx_clean() {
-  rm -rf "${DEPLOY_PATH}"/config/channel-artifacts/"${CHANNEL_NAME}".tx
 }
 
 function channelCreate() {
@@ -84,7 +80,7 @@ function channelCreate() {
       --outputBlock "${DEPLOY_PATH}"/config/channel-artifacts/"${CHANNEL_NAME}".block \
       --tls \
       --cafile "crypto-config/ordererOrganizations/${BASE_DOMAIN}/orderers/${ORDERER_1_NAME}.${BASE_DOMAIN}/msp/tlscacerts/tlsca.${BASE_DOMAIN}-cert.pem" \
-       >&log.txt
+      >&log.txt
     res=$?
     { set +x; } 2>/dev/null
     let rc=$res
@@ -92,9 +88,6 @@ function channelCreate() {
   done
   cat log.txt
   verifyResult $res "通道创建失败。"
-}
-function channelCreate_clean() {
-  rm -rf "${DEPLOY_PATH}"/config/channel-artifacts/"${CHANNEL_NAME}".block
 }
 
 function joinChannel() {
@@ -166,37 +159,37 @@ function setAnchorPeer() {
 
 }
 
-function setAnchorPeer_clean() {
-  rm -rf "${DEPLOY_PATH}/temp/createChannel"
-}
+function CHANNEL() {
+  local mode="$1"
 
-function CHANNEL_create() {
-  createChannelTx
-  successln "创建通道TX文件(${CHANNEL_NAME}.tx)成功。"
+  if [ "X${mode}" == "Xstart" ]; then
+    createChannelTx
+    successln "创建通道TX文件(${CHANNEL_NAME}.tx)成功。"
 
-  channelCreate
-  successln "通道 '${CHANNEL_NAME}' 创建成功。"
+    channelCreate
+    successln "通道 '${CHANNEL_NAME}' 创建成功。"
 
-  for ((i = 1; i <= ORG_NUMBER; i++)); do
-    local org_peer_number
-    org_peer_number=$(get_ORG_PEER_NUMBER "${i}")
+    for ((i = 1; i <= ORG_NUMBER; i++)); do
+      local org_peer_number
+      org_peer_number=$(get_ORG_PEER_NUMBER "${i}")
 
-    for ((ii = 1; ii <= org_peer_number; ii++)); do
-      joinChannel "${i}" "${ii}"
-      successln "org${i}-peer${ii} 加入通道成功。"
+      for ((ii = 1; ii <= org_peer_number; ii++)); do
+        joinChannel "${i}" "${ii}"
+        successln "org${i}-peer${ii} 加入通道成功。"
+      done
     done
-  done
 
-  for ((i = 1; i <= ORG_NUMBER; i++)); do
-    setAnchorPeer "${i}"
-    successln "org${i} 设置锚节点成功。"
-  done
+    for ((i = 1; i <= ORG_NUMBER; i++)); do
+      setAnchorPeer "${i}"
+      successln "org${i} 设置锚节点成功。"
+    done
 
-  infoln "======>   createChannel完成。"
-}
+    infoln "======>   createChannel完成。"
 
-function CHANNEL_clean() {
-  setAnchorPeer_clean
-  channelCreate_clean
-  createChannelTx_clean
+  elif [ "X${mode}" == "Xclean" ]; then
+    rm -rf "${DEPLOY_PATH}"/temp/createChannel "${DEPLOY_PATH}"/config/channel-artifacts/
+  else
+    fatalln "CHANNEL 函数的参数错误。"
+  fi
+
 }
