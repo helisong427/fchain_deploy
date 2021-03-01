@@ -1,75 +1,5 @@
 #!/bin/bash
 
-function orderer_parseConfig() {
-  if [ "${ORDERER_NUMBER}" -lt 1 ]; then
-    fatalln "config ORDERER_NUMBER 需要大于0"
-  fi
-  infoln "ORDERER_NUMBER=$ORDERER_NUMBER"
-  for ((i = 1; i <= ORDERER_NUMBER; i++)); do
-
-    local orderer_name orderer_rootpw orderer_port
-
-    parse_ORDERER_NAME "${i}"
-    orderer_name=$(get_ORDERER_NAME "${i}")
-    infoln "ORDERER_${i}_NAME=${orderer_name}.${BASE_DOMAIN}"
-
-    parse_ORDERER_ROOTPW "${i}"
-    orderer_rootpw=$(get_ORDERER_ROOTPW "${i}")
-    infoln "ORDERER_${i}_ROOTPW=${orderer_rootpw}"
-
-    parse_ORDERER_PORT "${i}"
-    orderer_port=$(get_ORDERER_PORT "${i}")
-    infoln "ORDERER_${i}_PORT=${orderer_port}"
-
-  done
-}
-
-function peer_parseConfig() {
-  if [ "${ORG_NUMBER}" -lt 1 ]; then
-    fatalln "config ORG_NUMBER 需要大于0"
-  fi
-  infoln "ORG_NUMBER=$ORG_NUMBER"
-
-  for ((i = 1; i <= ORG_NUMBER; i++)); do
-
-    local org_name org_msp_name org_anchor org_peer_number
-
-    parse_ORG_NAME "${i}"
-    org_name=$(get_ORG_NAME "${i}")
-    infoln "ORG_${i}_NAME=${org_name}"
-
-    parse_ORG_MSP_NAME "${i}"
-    org_msp_name=$(get_ORG_MSP_NAME "${i}")
-    infoln "ORG_${i}_MSP_NAME=${org_msp_name}"
-
-    parse_ORG_ANCHOR "${i}"
-    org_anchor=$(get_ORG_ANCHOR "${i}")
-    infoln "ORG_${i}_ANCHOR=${org_anchor}"
-
-    parse_ORG_PEER_NUMBER "${i}"
-    org_peer_number=$(get_ORG_PEER_NUMBER "${i}")
-    infoln "ORG_${i}_PEER_NUMBER=${org_peer_number}"
-
-    for ((ii = 1; ii <= org_peer_number; ii++)); do
-
-      local org_peer_name org_peer_rootpw org_peer_port
-
-      parse_ORG_PEER_NAME "${i}" "${ii}"
-      org_peer_name=$(get_ORG_PEER_NAME "${i}" "${ii}")
-      infoln "ORG_${i}_PEER_${ii}_NAME=${org_peer_name}.${org_name}.${BASE_DOMAIN}"
-
-      parse_ORG_PEER_ROOTPW "${i}" "${ii}"
-      org_peer_rootpw=$(get_ORG_PEER_ROOTPW "${i}" "${ii}")
-      infoln "ORG_${i}_PEER_${ii}_ROOTPW=${org_peer_rootpw}"
-
-      parse_ORG_PEER_PORT "${i}" "${ii}"
-      org_peer_port=$(get_ORG_PEER_PORT "${i}" "${ii}")
-      infoln "ORG_${i}_PEER_${ii}_PORT=${org_peer_port}"
-    done
-
-  done
-}
-
 function generateCrypto() {
 
   if [ -d "${DEPLOY_PATH}/config/crypto-config" ]; then
@@ -94,7 +24,6 @@ function generateCrypto() {
     #  IMAGE_TAG=${CA_IMAGETAG} docker-compose -f $COMPOSE_FILE_CA up -d 2>&1
 
   fi
-
 
 }
 
@@ -309,9 +238,106 @@ eeooff3
 
 }
 
+function NETWORK_parseConfig() {
+
+  ## 基础配置解析
+  if [ "X${CRYPTO}" != "XCA" ] && [ "X${CRYPTO}" != "XCRYPTOGEN" ]; then
+    fatalln "config CRYPTO 只能为'CA'或者'CRYPTOGEN'。"
+  fi
+  infoln "CRYPTO=${CRYPTO}"
+
+  if [ "X${CHANNEL_NAME}" == "X" ]; then
+    fatalln "config CHANNEL_NAME 不能为空。"
+  fi
+  infoln "CHANNEL_NAME=${CHANNEL_NAME}"
+
+  if [ "X${PROFILE_GENESIS}" == "X" ]; then
+    fatalln "config PROFILE_GENESIS 不能为空。"
+  fi
+  infoln "PROFILE_GENESIS=${PROFILE_GENESIS}"
+
+  if [ "X${IMAGE_TAG}" == "X" ]; then
+    fatalln "config IMAGE_TAG 不能为空。"
+  fi
+  infoln "IMAGE_TAG=${IMAGE_TAG}"
+  if [ "X${BASE_DOMAIN}" == "X" ]; then
+    fatalln "config BASE_DOMAIN 不能为空。"
+  fi
+  infoln "BASE_DOMAIN=${BASE_DOMAIN}"
+
+  ## ORDERER 配置解析
+  if [ "${ORDERER_NUMBER}" -lt 1 ]; then
+    fatalln "config ORDERER_NUMBER 需要大于0"
+  fi
+  infoln "ORDERER_NUMBER=$ORDERER_NUMBER"
+  for ((i = 1; i <= ORDERER_NUMBER; i++)); do
+    local orderer_name orderer_rootpw orderer_port
+
+    parse_ORDERER_NAME "${i}"
+    orderer_name=$(get_ORDERER_NAME "${i}")
+    infoln "ORDERER_${i}_NAME=${orderer_name}.${BASE_DOMAIN}"
+
+    parse_ORDERER_ROOTPW "${i}"
+    orderer_rootpw=$(get_ORDERER_ROOTPW "${i}")
+    infoln "ORDERER_${i}_ROOTPW=${orderer_rootpw}"
+
+    parse_ORDERER_PORT "${i}"
+    orderer_port=$(get_ORDERER_PORT "${i}")
+    infoln "ORDERER_${i}_PORT=${orderer_port}"
+  done
+
+  ## ORG 配置解析
+  if [ "${ORG_NUMBER}" -lt 1 ]; then
+    fatalln "config ORG_NUMBER 需要大于0"
+  fi
+  infoln "ORG_NUMBER=$ORG_NUMBER"
+
+  for ((i = 1; i <= ORG_NUMBER; i++)); do
+
+    local org_name org_msp_name org_anchor org_peer_number
+
+    parse_ORG_NAME "${i}"
+    org_name=$(get_ORG_NAME "${i}")
+    infoln "ORG_${i}_NAME=${org_name}"
+
+    parse_ORG_MSP_NAME "${i}"
+    org_msp_name=$(get_ORG_MSP_NAME "${i}")
+    infoln "ORG_${i}_MSP_NAME=${org_msp_name}"
+
+    parse_ORG_ANCHOR "${i}"
+    org_anchor=$(get_ORG_ANCHOR "${i}")
+    infoln "ORG_${i}_ANCHOR=${org_anchor}"
+
+    parse_ORG_PEER_NUMBER "${i}"
+    org_peer_number=$(get_ORG_PEER_NUMBER "${i}")
+    infoln "ORG_${i}_PEER_NUMBER=${org_peer_number}"
+
+    for ((ii = 1; ii <= org_peer_number; ii++)); do
+
+      local org_peer_name org_peer_rootpw org_peer_port
+
+      parse_ORG_PEER_NAME "${i}" "${ii}"
+      org_peer_name=$(get_ORG_PEER_NAME "${i}" "${ii}")
+      infoln "ORG_${i}_PEER_${ii}_NAME=${org_peer_name}.${org_name}.${BASE_DOMAIN}"
+
+      parse_ORG_PEER_ROOTPW "${i}" "${ii}"
+      org_peer_rootpw=$(get_ORG_PEER_ROOTPW "${i}" "${ii}")
+      infoln "ORG_${i}_PEER_${ii}_ROOTPW=${org_peer_rootpw}"
+
+      parse_ORG_PEER_PORT "${i}" "${ii}"
+      org_peer_port=$(get_ORG_PEER_PORT "${i}" "${ii}")
+      infoln "ORG_${i}_PEER_${ii}_PORT=${org_peer_port}"
+    done
+
+  done
+
+}
+
 function NETWORK() {
 
   local mode="$1"
+
+  NETWORK_parseConfig
 
   if [ "X${mode}" == "Xstart" ]; then
     if [ ! -d "${DEPLOY_PATH}/config/crypto-config/peerOrganizations" ]; then
@@ -347,4 +373,13 @@ function NETWORK() {
   done
 
   infoln "======>   所有peer ${mode} 完成。"
+
+  if [ "X${mode}" == "Xstart" ]; then
+    CHANNEL start
+  elif [ "X${mode}" == "Xclean" ]; then
+    CHANNEL clean
+  else
+    fatalln "NETWORK 函数的参数错误。"
+  fi
+
 }

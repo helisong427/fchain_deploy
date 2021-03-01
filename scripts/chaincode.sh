@@ -270,6 +270,10 @@ chaincodeInvokeInit() {
 
 # 参数解析
 function CC_parseConfig() {
+
+
+
+
   if [ "${CC_NUMBER}" -lt 1 ]; then
     fatalln "config CC_NUMBER 需要大于0"
   fi
@@ -446,6 +450,9 @@ function CC_deploy() {
 function CHAINCODE() {
 
   local mode="$1"
+
+  CC_parseConfig
+
   for ((i = 1; i <= CC_NUMBER; i++)); do
     CC_exportEnv "${i}"
     if [ "X${mode}" == "Xstart" ]; then

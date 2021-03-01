@@ -1,11 +1,9 @@
 #!/bin/bash
 
 ########### 基本配置
-# 生成配置文件的方式，支持两种方式：CA和CRYPTOGEN
-readonly CRYPTO="CRYPTOGEN"
+readonly CRYPTO="CRYPTOGEN"                      # 生成配置文件的方式，支持两种方式：CA和CRYPTOGEN。配置为CA时，在执行deploy.sh up前需要先执行deploy.sh CA
 readonly CHANNEL_NAME="mychannel"
-#通道配置文件configtx.yaml中 Profiles 域中关于创世块的配置域的域名
-readonly PROFILE_GENESIS="TwoOrgsOrdererGenesis"
+readonly PROFILE_GENESIS="TwoOrgsOrdererGenesis" #通道配置文件configtx.yaml中 Profiles 域中关于创世块的配置域的域名
 readonly IMAGE_TAG="amd64-2.2.1-bf63e7cb0"
 readonly BASE_DOMAIN="lianxiang.com"
 
@@ -47,6 +45,25 @@ readonly ORG_2_PEER_2_NAME="peer1"
 readonly ORG_2_PEER_2_ROOTPW="heyufeng"
 readonly ORG_2_PEER_2_PORT="10051"
 
+########### CA配置
+readonly CA_IMAGE_TAG="amd64-1.4.9"
+readonly CA_ROOT_NAME="ca_root"
+readonly CA_ROOT_ROOTPW="heyufeng"
+readonly CA_ROOT_PORT="7054"
+
+readonly CA_ORDERER_NAME="ca_orderer"
+readonly CA_ORDERER_ROOTPW="heyufeng"
+readonly CA_ORDERER_PORT="8054"
+
+readonly CA_ORG_1_NAME="ca_org1"
+readonly CA_ORG_1_ROOTPW="lighting"
+readonly CA_ORG_1_PORT="9054"
+
+readonly CA_ORG_2_NAME="ca_org2"
+readonly CA_ORG_2_ROOTPW="lighting8000"
+readonly CA_ORG_2_PORT="10054"
+
+
 ########### 链码配置
 readonly CC_NUMBER="1"
 readonly CC_1_NAME="abstore"
@@ -57,6 +74,9 @@ readonly CC_1_INIT_FUNCTION="{\"Args\":[\"Init\",\"a\",\"100\",\"b\",\"100\"]}" 
 #CC_1_SIGNATURE_POLICY="AND('Org1MSP.peer','Org2MSP.peer')" # 链码背书策略（如果不指定，默认使用通道配置中的策略作为链码背书策略）
 readonly CC_1_SEQUENCE="1"
 
+
+
+##########  orderer 配置读取
 function get_ORDERER_NAME() {
   local orderer_name orderer_index="$1"
   orderer_name=$(eval echo '$'"ORDERER_${orderer_index}_NAME")
@@ -96,6 +116,8 @@ function parse_ORDERER_PORT() {
   fi
 }
 
+
+##########  ORG组织 配置读取
 function get_ORG_NAME() {
   local org_name org_index="$1"
   org_name=$(eval echo '$'"ORG_${org_index}_NAME")
@@ -187,6 +209,8 @@ function parse_ORG_PEER_PORT() {
   fi
 }
 
+
+##########  chaincode 配置读取
 function get_CC_NAME() {
   local cc_name cc_index="$1"
   cc_name=$(eval echo '$'"CC_${cc_index}_NAME")
@@ -239,6 +263,12 @@ function parse_CC_SEQUENCE() {
   fi
 }
 
+function get_CC_INIT() {
+  local cc_init cc_index="$1"
+  cc_init=$(eval echo '$'"CC_${cc_index}_INIT")
+  echo "${cc_init}"
+}
+
 function get_CC_INIT_FUNCTION() {
   local cc_init_function cc_index="$1"
   cc_init_function=$(eval echo '$'"CC_${cc_index}_INIT_FUNCTION")
@@ -252,11 +282,6 @@ function parse_CC_INIT_FUNCTION() {
   fi
 }
 
-function get_CC_INIT() {
-  local cc_init cc_index="$1"
-  cc_init=$(eval echo '$'"CC_${cc_index}_INIT")
-  echo "${cc_init}"
-}
 
 #function get_CC_SIGNATURE_POLICY() {
 #  local cc_index="$1"
@@ -265,4 +290,44 @@ function get_CC_INIT() {
 #  echo "${cc_signature_policy}"
 #}
 
+
+##########  CA 配置读取
+function get_CA_ORG_NAME() {
+  local ca_org_name ca_index="$1"
+  ca_org_name=$(eval echo '$'"CA_ORG_${ca_index}_NAME")
+  echo "${ca_org_name}"
+}
+function parse_CA_ORG_NAME() {
+  local ca_org_name ca_index="$1"
+  ca_org_name=$(eval echo '$'"CA_ORG_${ca_index}_NAME")
+  if [ "X${ca_org_name}" == "X" ]; then
+    fatalln "config CA_ORG_${ca_index}_NAME 不能为空。"
+  fi
+}
+
+function get_CA_ORG_ROOTPW() {
+  local ca_org_rootpw ca_index="$1"
+  ca_org_rootpw=$(eval echo '$'"CA_ORG_${ca_index}_ROOTPW")
+  echo "${ca_org_rootpw}"
+}
+function parse_CA_ORG_ROOTPW() {
+  local ca_org_rootpw ca_index="$1"
+  ca_org_rootpw=$(eval echo '$'"CA_ORG_${ca_index}_ROOTPW")
+  if [ "X${ca_org_rootpw}" == "X" ]; then
+    fatalln "config CA_ORG_${ca_index}_ROOTPW 不能为空。"
+  fi
+}
+
+function get_CA_ORG_PORT() {
+  local ca_org_port ca_index="$1"
+  ca_org_port=$(eval echo '$'"CA_ORG_${ca_index}_PORT")
+  echo "${ca_org_port}"
+}
+function parse_CA_ORG_PORT() {
+  local ca_org_port ca_index="$1"
+  ca_org_port=$(eval echo '$'"CA_ORG_${ca_index}_PORT")
+  if [ "X${ca_org_port}" == "X" ]; then
+    fatalln "config CA_ORG_${ca_index}_PORT 不能为空。"
+  fi
+}
 

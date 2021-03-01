@@ -162,6 +162,8 @@ function setAnchorPeer() {
 function CHANNEL() {
   local mode="$1"
 
+  NETWORK_parseConfig
+
   if [ "X${mode}" == "Xstart" ]; then
     createChannelTx
     successln "创建通道TX文件(${CHANNEL_NAME}.tx)成功。"

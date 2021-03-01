@@ -12,8 +12,9 @@ export FABRIC_CFG_PATH=${DEPLOY_PATH}/config
 . scripts/envVar.sh
 
 . scripts/check.sh
-. scripts/network.sh
 . scripts/channel.sh
+. scripts/network.sh
+. scripts/ca.sh
 . scripts/chaincode.sh
 
 if ! check_env; then
@@ -46,50 +47,22 @@ while [[ $# -ge 1 ]]; do
   shift
 done
 
-function parseConfig() {
-
-  if [ "X${CRYPTO}" != "XCA" ] && [ "X${CRYPTO}" != "XCRYPTOGEN" ]; then
-      fatalln "config CRYPTO 只能为'CA'或者'CRYPTOGEN'。"
-  fi
-
-  if [ "X${CHANNEL_NAME}" == "X" ]; then
-    fatalln "config CHANNEL_NAME 不能为空。"
-  fi
-  infoln "CHANNEL_NAME=${CHANNEL_NAME}"
-  if [ "X${PROFILE_GENESIS}" == "X" ]; then
-    fatalln "config PROFILE_GENESIS 不能为空。"
-  fi
-  infoln "PROFILE_GENESIS=${PROFILE_GENESIS}"
-
-  if [ "X${IMAGE_TAG}" == "X" ]; then
-    fatalln "config IMAGE_TAG 不能为空。"
-  fi
-  infoln "IMAGE_TAG=${IMAGE_TAG}"
-  if [ "X${BASE_DOMAIN}" == "X" ]; then
-    fatalln "config BASE_DOMAIN 不能为空。"
-  fi
-  infoln "BASE_DOMAIN=${BASE_DOMAIN}"
-
-  orderer_parseConfig
-  peer_parseConfig
-  CC_parseConfig
-
-}
-
-# 检查参数配置
-parseConfig
-
 
 if [ "${MODE}" == "up" ]; then
+  CHAINCODE clean
+  NETWORK clean
   NETWORK start
-elif [ "${MODE}" == "createChannel" ]; then
-  CHANNEL start
-elif [ "${MODE}" == "deployCC" ]; then
+elif [ "${MODE}" == "CC" ]; then
+  CHAINCODE clean
   CHAINCODE start
+elif [ "${MODE}" == "CA" ]; then
+  CA start
+elif [ "${MODE}" == "cleanCA" ]; then
+  CA clean
 elif [ "${MODE}" == "clean" ]; then
   CHAINCODE clean
-  CHANNEL clean
   NETWORK clean
+  CA clean
 else
   printHelp
   exit 1
