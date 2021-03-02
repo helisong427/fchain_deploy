@@ -1,26 +1,26 @@
 version: '2'
 
 networks:
-  fchain:
+  ca_fchain:
 volumes:
-  - ca_root.lianxiang.com:
+  ca_org1.lianxiang.com:
 
 services:
 
-  ca_root.lianxiang.com:
+  ca_org1.lianxiang.com:
     image: hyperledger/fabric-ca:${CA_IMAGE_TAG}
     environment:
       - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
-      - FABRIC_CA_SERVER_CA_NAME=ca_root.lianxiang.com
+      - FABRIC_CA_SERVER_CA_NAME=ca_org1.lianxiang.com
       - FABRIC_CA_SERVER_TLS_ENABLED=true
-      - FABRIC_CA_SERVER_PORT=7054
+      - FABRIC_CA_SERVER_PORT=9054
     ports:
-      - 7054:7054
+      - 9054:9054
     command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
     volumes:
-      - ca_root.lianxiang.com:/etc/hyperledger/fabric-ca-server
-    container_name: ca_root.lianxiang.com
+      - ca_org1.lianxiang.com:/etc/hyperledger/fabric-ca-server
+    container_name: ca_org1.lianxiang.com
     networks:
-      - fchain
+      - ca_fchain
     extra_hosts:
       - "ca_root.lianxiang.com:172.26.31.52"

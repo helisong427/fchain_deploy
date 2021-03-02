@@ -8,21 +8,21 @@ function generateCrypto() {
 
   # 生成证书配置
   if [ "X${CRYPTO}" == "XCRYPTOGEN" ]; then
-    if ! which cryptogen; then
+
+    if ! which cryptogen -ne 0; then
       fatalln "cryptogen tool not found. exiting"
     fi
-
+    set -x
     cryptogen generate --config="${DEPLOY_PATH}"/config/crypto-config.yaml --output "${DEPLOY_PATH}"/config/crypto-config/
-    if [[ $# -lt 0 ]]; then
+    res=$?
+    { set +x; } 2>/dev/null
+    if [[ ${res} -lt 0 ]]; then
       errorln "生成证书文件失败."
     fi
-
     infoln "生成证书文件完成。"
 
-    #  elif [ "X${CRYPTO}" != "XCA" ]; then
-    #
-    #  IMAGE_TAG=${CA_IMAGETAG} docker-compose -f $COMPOSE_FILE_CA up -d 2>&1
-
+  elif [ "X${CRYPTO}" == "XCA" ]; then
+    CA_createCrypto
   fi
 
 }
@@ -41,7 +41,7 @@ function createConsortium() {
   configtxgen -profile "${PROFILE_GENESIS}" -channelID system-channel -outputBlock "${DEPLOY_PATH}"/config/system-genesis-block/genesis.block
   res=$?
   { set +x; } 2>/dev/null
-  if [ $res -ne 0 ]; then
+  if [ ${res} -ne 0 ]; then
     fatalln "创建通道失败：创建创世区块文件失败。"
   fi
 
@@ -77,59 +77,63 @@ function startupOrderer() {
       config/system-genesis-block/genesis.block \
       config/docker/docker-compose-"${orderer_name}".yaml
 
-    # cd "${temp_dir}" && md5sum "${orderer_name}".tar >"${orderer_name}".md5 && cd "${DEPLOY_PATH}"
-    set -e
-    pushd "${temp_dir}" >/dev/null 2>&1
-    md5sum "${orderer_name}".tar >"${orderer_name}".md5
-    popd >/dev/null 2>&1
-    set +e
+    uploadFile "${orderer_name}" "${temp_dir}" "${orderer_rootpw}" "${orderer_domain}"
 
-    sshpass -p "${orderer_rootpw}" ssh -tt root@"${orderer_domain}" >/dev/null 2>&1 <<eeooff0
-      if [ ! -d /var/hyperledger ]; then
-        mkdir /var/hyperledger
-      fi
-      exit
-eeooff0
+    #    # cd "${temp_dir}" && md5sum "${orderer_name}".tar >"${orderer_name}".md5 && cd "${DEPLOY_PATH}"
+    #    set -e
+    #    pushd "${temp_dir}" >/dev/null 2>&1
+    #    md5sum "${orderer_name}".tar >"${orderer_name}".md5
+    #    popd >/dev/null 2>&1
+    #    set +e
+    #
+    #    sshpass -p "${orderer_rootpw}" ssh -tt root@"${orderer_domain}" >/dev/null 2>&1 <<eeooff0
+    #      if [ ! -d /var/hyperledger ]; then
+    #        mkdir /var/hyperledger
+    #      fi
+    #      exit
+    #eeooff0
+    #
+    #    sshpass -p "${orderer_rootpw}" scp "${temp_dir}"/"${orderer_name}".md5 root@"${orderer_domain}":/var/hyperledger/"${orderer_name}".md5
+    #
+    #    sshpass -p "${orderer_rootpw}" ssh -tt root@"${orderer_domain}" >"${temp_dir}"/"${orderer_name}"_md5.txt <<eeooff1
+    #      cd /var/hyperledger
+    #      if [ -f "${orderer_name}".tar ]; then
+    #        md5sum -c "${orderer_name}".md5
+    #      fi
+    #      exit
+    #eeooff1
+    #
+    #    local ret
+    #    ret=$(grep "${orderer_name}".tar "${temp_dir}"/"${orderer_name}"_md5.txt | awk -F" " '{print $2}' | tr -d '\n\r')
+    #    if [ "X${ret}" != "XOK" ] && [ "X${ret}" != "X确定" ] && [ "X${ret}" != "X成功" ]; then
+    #      sshpass -p "${orderer_rootpw}" scp "${temp_dir}"/"${orderer_name}".tar root@"${orderer_domain}":/var/hyperledger/"${orderer_name}".tar
+    #    else
+    #      infoln "${orderer_name}.tar 文件存在，不需要上传。"
+    #    fi
 
-    sshpass -p "${orderer_rootpw}" scp "${temp_dir}"/"${orderer_name}".md5 root@"${orderer_domain}":/var/hyperledger/"${orderer_name}".md5
-
-    sshpass -p "${orderer_rootpw}" ssh -tt root@"${orderer_domain}" >"${temp_dir}"/"${orderer_name}"_md5.txt <<eeooff1
-      cd /var/hyperledger
-      if [ -f "${orderer_name}".tar ]; then
-        md5sum -c "${orderer_name}".md5
-      fi
-      exit
-eeooff1
-
-    local ret
-    ret=$(grep "${orderer_name}".tar "${temp_dir}"/"${orderer_name}"_md5.txt | awk -F" " '{print $2}' | tr -d '\n\r')
-    if [ "X${ret}" != "XOK" ] && [ "X${ret}" != "X确定" ] && [ "X${ret}" != "X成功" ]; then
-      sshpass -p "${orderer_rootpw}" scp "${temp_dir}"/"${orderer_name}".tar root@"${orderer_domain}":/var/hyperledger/"${orderer_name}".tar
-    else
-      infoln "${orderer_name}.tar 文件存在，不需要上传。"
-    fi
-
-    sshpass -p "${orderer_rootpw}" ssh -tt root@"${orderer_domain}" >"${temp_dir}"/"${orderer_name}"_dockerLoad.txt <<eeooff2
+    sshpass -p "${orderer_rootpw}" ssh -o StrictHostKeyChecking=no -tt root@"${orderer_domain}" >"${temp_dir}"/"${orderer_name}"_dockerLoad.txt <<eeooff
       cd /var/hyperledger && \
       rm -rf ./config/crypto-config/ordererOrganizations/"${BASE_DOMAIN}"/orderers/"${orderer_name}"."${BASE_DOMAIN}"/ ./images/files/orderer/ && \
       tar -xf "${orderer_name}".tar && \
       docker load < ./images/files/orderer/*.gz
-      exit
-eeooff2
-
-    sshpass -p "${orderer_rootpw}" ssh -tt root@"${orderer_domain}" >"${temp_dir}"/"${orderer_name}"_dockerUp.txt <<eeooff3
-      cd  /var/hyperledger/config/docker
-      IMAGE_TAG="$IMAGE_TAG" docker-compose -f docker-compose-"${orderer_name}".yaml up -d
+      cd  /var/hyperledger/config/docker && IMAGE_TAG="$IMAGE_TAG" docker-compose -f docker-compose-"${orderer_name}".yaml up -d
       docker ps
       exit
-eeooff3
+eeooff
+
+    #    sshpass -p "${orderer_rootpw}" ssh -o StrictHostKeyChecking=no -tt root@"${orderer_domain}" >"${temp_dir}"/"${orderer_name}"_dockerUp.txt <<eeooff3
+    #      cd  /var/hyperledger/config/docker
+    #      IMAGE_TAG="$IMAGE_TAG" docker-compose -f docker-compose-"${orderer_name}".yaml up -d
+    #      docker ps
+    #      exit
+    #eeooff3
 
     infoln "启动${orderer_name}完成。"
 
   elif [ "X${mode}" == "Xclean" ]; then
     rm -rf "${DEPLOY_PATH}/config/crypto-config/" "${temp_dir}" && mkdir -p "${temp_dir}"
 
-    sshpass -p "${orderer_rootpw}" ssh -tt root@"${orderer_domain}" >"${temp_dir}"/"${orderer_name}"_dockerDown.txt <<eeooff3
+    sshpass -p "${orderer_rootpw}" ssh -o StrictHostKeyChecking=no -tt root@"${orderer_domain}" >"${temp_dir}"/"${orderer_name}"_dockerDown.txt <<eeooff3
       cd  /var/hyperledger/config/docker
       docker rm ${orderer_domain} -vf
       docker volume rm docker_${orderer_domain}
@@ -173,50 +177,54 @@ function startupPeer() {
       images/files/peer/ \
       config/docker/docker-compose-"${peerOrgName}".yaml
 
-    #cd "${temp_dir}" && md5sum "${peerOrgName}".tar >"${peerOrgName}".md5 && cd "${DEPLOY_PATH}"
-    set -e
-    pushd "${temp_dir}" >/dev/null 2>&1
-    md5sum "${peerOrgName}".tar >"${peerOrgName}".md5
-    popd >/dev/null 2>&1
-    set +e
+    uploadFile "${peerOrgName}" "${temp_dir}" "${peer_rootpw}" "${peer_domain}"
 
-    sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >/dev/null 2>&1 <<eeooff0
-      if [ ! -d /var/hyperledger ]; then
-        mkdir /var/hyperledger
-      fi
-      exit
-eeooff0
+    #    #cd "${temp_dir}" && md5sum "${peerOrgName}".tar >"${peerOrgName}".md5 && cd "${DEPLOY_PATH}"
+    #    set -e
+    #    pushd "${temp_dir}" >/dev/null 2>&1
+    #    md5sum "${peerOrgName}".tar >"${peerOrgName}".md5
+    #    popd >/dev/null 2>&1
+    #    set +e
+    #
+    #    sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >/dev/null 2>&1 <<eeooff0
+    #      if [ ! -d /var/hyperledger ]; then
+    #        mkdir /var/hyperledger
+    #      fi
+    #      exit
+    #eeooff0
+    #
+    #    sshpass -p "${peer_rootpw}" scp "${temp_dir}"/"${peerOrgName}".md5 root@"${peer_domain}":/var/hyperledger/"${peerOrgName}".md5
+    #    sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >"${temp_dir}"/"${peerOrgName}"_md5.txt <<eeooff1
+    #      cd /var/hyperledger
+    #      if [ -f "${peerOrgName}".tar ]; then
+    #        md5sum -c "${peerOrgName}".md5
+    #      fi
+    #      exit
+    #eeooff1
+    #
+    #    local ret
+    #    ret=$(grep "${peerOrgName}".tar "${temp_dir}/${peerOrgName}"_md5.txt | awk -F" " '{print $2}' | tr -d '\n\r')
+    #    if [ "X${ret}" != "XOK" ] && [ "X${ret}" != "X确定" ] && [ "X${ret}" != "X成功" ]; then
+    #      sshpass -p "${peer_rootpw}" scp "${temp_dir}"/"${peerOrgName}".tar root@"${peer_domain}":/var/hyperledger/"${peerOrgName}".tar
+    #    else
+    #      infoln "${peerOrgName}.tar 文件存在，不需要上传。"
+    #    fi
 
-    sshpass -p "${peer_rootpw}" scp "${temp_dir}"/"${peerOrgName}".md5 root@"${peer_domain}":/var/hyperledger/"${peerOrgName}".md5
-    sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >"${temp_dir}"/"${peerOrgName}"_md5.txt <<eeooff1
-      cd /var/hyperledger
-      if [ -f "${peerOrgName}".tar ]; then
-        md5sum -c "${peerOrgName}".md5
-      fi
-      exit
-eeooff1
-
-    local ret
-    ret=$(grep "${peerOrgName}".tar "${temp_dir}/${peerOrgName}"_md5.txt | awk -F" " '{print $2}' | tr -d '\n\r')
-    if [ "X${ret}" != "XOK" ] && [ "X${ret}" != "X确定" ] && [ "X${ret}" != "X成功" ]; then
-      sshpass -p "${peer_rootpw}" scp "${temp_dir}"/"${peerOrgName}".tar root@"${peer_domain}":/var/hyperledger/"${peerOrgName}".tar
-    else
-      infoln "${peerOrgName}.tar 文件存在，不需要上传。"
-    fi
-
-    sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >"${temp_dir}"/"${peerOrgName}"_dockerLoad.txt <<eeooff2
+    sshpass -p "${peer_rootpw}" ssh -o StrictHostKeyChecking=no -tt root@"${peer_domain}" >"${temp_dir}"/"${peerOrgName}"_dockerLoad.txt <<eeooff2
       cd /var/hyperledger && \
       rm -rf ./config/crypto-config/peerOrganizations/"${org_name}"."${BASE_DOMAIN}"/peers/"${peerOrgName}"."${BASE_DOMAIN}"/ ./images/files/peer/ && tar -xf "${peerOrgName}".tar && \
       docker load < ./images/files/peer/*.gz
+      cd /var/hyperledger/config/docker && IMAGE_TAG="${IMAGE_TAG}"  docker-compose -f docker-compose-"${peerOrgName}".yaml up -d
+      docker ps
       exit
 eeooff2
 
-    sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >"${temp_dir}"/"${peerOrgName}"_dockerUp.txt <<eeooff3
-      cd /var/hyperledger/config/docker
-      IMAGE_TAG="${IMAGE_TAG}"  docker-compose -f docker-compose-"${peerOrgName}".yaml up -d
-      docker ps
-      exit
-eeooff3
+    #    sshpass -p "${peer_rootpw}" ssh -o StrictHostKeyChecking=no -tt root@"${peer_domain}" >"${temp_dir}"/"${peerOrgName}"_dockerUp.txt <<eeooff3
+    #      cd /var/hyperledger/config/docker
+    #      IMAGE_TAG="${IMAGE_TAG}"  docker-compose -f docker-compose-"${peerOrgName}".yaml up -d
+    #      docker ps
+    #      exit
+    #eeooff3
 
     infoln "启动${peerOrgName}成功。"
 
@@ -224,7 +232,7 @@ eeooff3
 
     rm -rf "${temp_dir}" && mkdir -p "${temp_dir}"
 
-    sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >"${temp_dir}"/"${peerOrgName}"_dockerDown.txt <<eeooff3
+    sshpass -p "${peer_rootpw}" ssh -o StrictHostKeyChecking=no -tt root@"${peer_domain}" >"${temp_dir}"/"${peerOrgName}"_dockerDown.txt <<eeooff3
       cd /var/hyperledger/config/docker
       docker rm ${peer_domain} -vf
       docker volume rm docker_${peer_domain}
@@ -341,7 +349,7 @@ function NETWORK() {
 
   if [ "X${mode}" == "Xstart" ]; then
     if [ ! -d "${DEPLOY_PATH}/config/crypto-config/peerOrganizations" ]; then
-      generateCrypto "a"
+      generateCrypto
       createConsortium
     fi
   elif [ "X${mode}" == "Xclean" ]; then

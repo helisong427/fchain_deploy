@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 C_RESET='\033[0m'
 C_RED='\033[0;31m'
 C_GREEN='\033[0;32m'
@@ -72,7 +71,63 @@ function printHelp() {
   fi
 }
 
+# 上传文件
+function uploadFile() {
 
+  local file_name="$1" temp_dir="$2" rootpw="$3" domain="$4"
+
+  if [ "X${file_name}" == "X" ]; then
+    fatalln "uploadFile失败：第一个参数（file name）为空。"
+  fi
+
+  if [ "X${temp_dir}" == "X" ]; then
+    fatalln "uploadFile失败：第二个参数（temp dir）为空。"
+  fi
+
+  if [ "X${rootpw}" == "X" ]; then
+    fatalln "uploadFile失败：第三个参数（root passwd）为空。"
+  fi
+
+  if [ "X${domain}" == "X" ]; then
+    fatalln "uploadFile失败：第三个参数（domain）为空。"
+  fi
+
+  if [ ! -f "${temp_dir}/${file_name}".tar ]; then
+    fatalln "uploadFile失败：上传文件（${temp_dir}/${file_name}.tar）不存在。"
+  fi
+
+  set -e
+  pushd "${temp_dir}" >/dev/null 2>&1
+  md5sum "${file_name}".tar >"${file_name}".md5
+  popd >/dev/null 2>&1
+  set +e
+
+  sshpass -p "${rootpw}" ssh -o StrictHostKeyChecking=no -tt root@"${domain}" >/dev/null 2>&1 <<eeooff0
+      if [ ! -d /var/hyperledger ]; then
+        mkdir /var/hyperledger
+      fi
+      exit
+eeooff0
+
+  sshpass -p "${rootpw}" scp -o StrictHostKeyChecking=no "${temp_dir}"/"${file_name}".md5 root@"${domain}":/var/hyperledger/"${file_name}".md5
+
+  sshpass -p "${rootpw}" ssh -o StrictHostKeyChecking=no -tt root@"${domain}" >"${temp_dir}"/"${file_name}"_md5.txt <<eeooff1
+      cd /var/hyperledger
+      if [ -f "${file_name}".tar ]; then
+        md5sum -c "${file_name}".md5
+      fi
+      exit
+eeooff1
+
+  local ret
+  ret=$(grep "${file_name}".tar "${temp_dir}"/"${file_name}"_md5.txt | awk -F" " '{print $2}' | tr -d '\n\r')
+  if [ "X${ret}" != "XOK" ] && [ "X${ret}" != "X确定" ] && [ "X${ret}" != "X成功" ]; then
+    sshpass -p "${rootpw}" scp -o StrictHostKeyChecking=no "${temp_dir}"/"${file_name}".tar root@"${domain}":/var/hyperledger/"${file_name}".tar
+    successln "${file_name}.tar 文件上传完成。"
+  else
+    infoln "${file_name}.tar 文件存在，不需要上传。"
+  fi
+}
 
 # println echos string
 function println() {
@@ -104,7 +159,6 @@ function fatalln() {
   errorln "$1"
   exit 1
 }
-
 
 export -f errorln
 export -f successln

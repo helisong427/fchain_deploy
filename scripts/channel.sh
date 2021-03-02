@@ -1,8 +1,5 @@
 #!/bin/bash
 
-MAX_RETRY="5"
-DELAY="3"
-
 # fetchChannelConfig <org> <channel_id> <output_json>
 # Writes the current channel config for a given channel to a JSON file
 # NOTE: this must be run in a CLI container since it requires configtxlator
@@ -162,7 +159,7 @@ function setAnchorPeer() {
 function CHANNEL() {
   local mode="$1"
 
-  NETWORK_parseConfig
+  #NETWORK_parseConfig
 
   if [ "X${mode}" == "Xstart" ]; then
     createChannelTx

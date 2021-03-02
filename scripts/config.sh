@@ -1,7 +1,10 @@
 #!/bin/bash
 
 ########### 基本配置
-readonly CRYPTO="CRYPTOGEN"                      # 生成配置文件的方式，支持两种方式：CA和CRYPTOGEN。配置为CA时，在执行deploy.sh up前需要先执行deploy.sh CA
+MAX_RETRY="5"
+DELAY="2"
+
+readonly CRYPTO="CRYPTOGEN"                      # 生成配置文件的方式，支持两种方式：CA 和 CRYPTOGEN。配置为CA时，在执行deploy.sh up前需要先执行deploy.sh CA
 readonly CHANNEL_NAME="mychannel"
 readonly PROFILE_GENESIS="TwoOrgsOrdererGenesis" #通道配置文件configtx.yaml中 Profiles 域中关于创世块的配置域的域名
 readonly IMAGE_TAG="amd64-2.2.1-bf63e7cb0"
@@ -47,9 +50,9 @@ readonly ORG_2_PEER_2_PORT="10051"
 
 ########### CA配置
 readonly CA_IMAGE_TAG="amd64-1.4.9"
-readonly CA_ROOT_NAME="ca_root"
-readonly CA_ROOT_ROOTPW="heyufeng"
-readonly CA_ROOT_PORT="7054"
+#readonly CA_ROOT_NAME="ca_root"
+#readonly CA_ROOT_ROOTPW="heyufeng"
+#readonly CA_ROOT_PORT="7054"
 
 readonly CA_ORDERER_NAME="ca_orderer"
 readonly CA_ORDERER_ROOTPW="heyufeng"

@@ -17,24 +17,25 @@ function pushCcenvImagesFile() {
     tar -cf "${temp_dir}/ccenv.tar" images/files/ccenv/ images/files/baseos/
   fi
 
-  sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >"${temp_dir}"/ccenv_md5.txt <<eeooff1
-  cd /var/hyperledger
-  if [ -f ccenv.tar ]; then
-    echo "ccenv.tar EXIST"
-  fi
-  exit
-eeooff1
+  uploadFile "ccenv" "${temp_dir}" "${peer_rootpw}" "${peer_domain}"
 
-  local ret
-  ret=$(grep -n '^ccenv.tar' "${temp_dir}"/ccenv_md5.txt | awk -F" " '{print $2}' | tr -d '\n\r')
-  echo "${ret}"
-  if [ "X${ret}" != "XEXIST" ]; then
-    sshpass -p "${peer_rootpw}" scp "${temp_dir}"/ccenv.tar root@"${peer_domain}":/var/hyperledger/ccenv.tar
-  else
-    infoln "ccenv.tar 文件存在，不需要上传。"
-  fi
+#  sshpass -p "${peer_rootpw}" ssh -o StrictHostKeyChecking=no -tt root@"${peer_domain}" >"${temp_dir}"/ccenv_md5.txt <<eeooff1
+#  cd /var/hyperledger
+#  if [ -f ccenv.tar ]; then
+#    echo "ccenv.tar EXIST"
+#  fi
+#  exit
+#eeooff1
+#
+#  local ret
+#  ret=$(grep -n '^ccenv.tar' "${temp_dir}"/ccenv_md5.txt | awk -F" " '{print $2}' | tr -d '\n\r')
+#  if [ "X${ret}" != "XEXIST" ]; then
+#    sshpass -p "${peer_rootpw}" scp -o StrictHostKeyChecking=no "${temp_dir}"/ccenv.tar root@"${peer_domain}":/var/hyperledger/ccenv.tar
+#  else
+#    infoln "ccenv.tar 文件存在，不需要上传。"
+#  fi
 
-  sshpass -p "${peer_rootpw}" ssh -tt root@"${peer_domain}" >"${temp_dir}"/ccenv_dockerLoad.txt <<eeooff2
+  sshpass -p "${peer_rootpw}" ssh -o StrictHostKeyChecking=no -tt root@"${peer_domain}" >"${temp_dir}"/ccenv_dockerLoad.txt <<eeooff2
   cd /var/hyperledger
   if [ ! -f ./images/files/ccenv/*.tar ] || [ ! -f ./images/files/baseos/*.tar ]; then
      tar -xf ccenv.tar

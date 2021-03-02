@@ -52,17 +52,16 @@ if [ "${MODE}" == "up" ]; then
   CHAINCODE clean
   NETWORK clean
   NETWORK start
-elif [ "${MODE}" == "CC" ]; then
+elif [ "${MODE}" == "cc" ]; then
   CHAINCODE clean
   CHAINCODE start
-elif [ "${MODE}" == "CA" ]; then
+elif [ "${MODE}" == "ca" ]; then
   CA start
-elif [ "${MODE}" == "cleanCA" ]; then
+elif [ "${MODE}" == "downCA" ]; then
   CA clean
 elif [ "${MODE}" == "clean" ]; then
   CHAINCODE clean
   NETWORK clean
-  CA clean
 else
   printHelp
   exit 1
